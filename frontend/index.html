@@ -203,7 +203,10 @@ main {
   </div>
 
   <div class="panel" id="audit-panel">
-    <div class="panel-header">审计链</div>
+    <div class="panel-header" style="display:flex;justify-content:space-between;align-items:center;">
+      <span>审计链</span>
+      <span id="chain-status" style="font-size:10px;cursor:pointer;color:var(--accent);" onclick="verifyChain()" title="点击验证SHA256完整性">验证</span>
+    </div>
     <div id="audit-content">
       <div style="font-size:11px;color:var(--text-muted);">等待交互...</div>
     </div>
@@ -211,6 +214,6 @@ main {
 </main>
 
 <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.min.js"></script>
-<script src="src/app.js?v=10"></script>
+<script src="src/app.js?v=11"></script>
 </body>
 </html>

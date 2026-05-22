@@ -1,43 +1,63 @@
 # Kylin Agent
 
-Security-hardened AI operations agent for Kylin OS. Natural language → structured tool calls → security validation → sandboxed execution.
+Security-hardened AI operations agent for Kylin OS.  Natural language → classifier → dynamic system prompt → T0-T3 security validation → sandboxed execution.
+
+**Deployed on:** Kylin Linux Advanced Server V11 (Swan25) · x86_64 · DeepSeek LLM
 
 ## Architecture
 
 ```
-User Input → T0 → Perception → Router → Reasoner (LLM) → T1 Risk → T2 Constraints → T3 Sandbox
-                                                          ↓                                           ↓
-                                                    CONFIRMATION_REQUIRED ← POST /api/confirm → Execution
+User Input → T0 → Perception → Classifier (LLM) → Reasoner (LLM + Dynamic Prompt)
+                                                          ↓
+                              CONFIRMATION_REQUIRED ← POST /api/confirm → Execution
+                                              ↓
+                              T1 Risk → T2 Constraints → T3 Sandbox
 ```
 
 | Stage | Module | What it does |
 |-------|--------|---------------|
-| T0 | `security/anti_injection.py` | Blocks prompt injection, role-switch, overflow |
-| — | `agent/perception.py` | Builds context from mock/real OS sensors |
-| — | `agent/router.py` | Classifies intent: query / action / emergency |
-| — | `agent/reasoner.py` | LLM generates structured tool calls (JSON) |
-| T1 | `security/risk_model.py` | Deterministic risk score (1-10), no LLM |
-| T2 | `security/constraints.py` | Tool semantics + raw regex, dual-path veto/confirm |
-| T3 | `security/sandbox.py` | Command allowlist enforcement |
+| T0 | `security/anti_injection.py` | Blocks prompt injection, hex/base64/unicode obfuscation, overflow |
+| — | `agent/perception.py` | Builds context: OS sensors + conversation history + audit trail |
+| — | `agent/classifier.py` | LLM-based intent classifier (query/action/emergency), rule fallback |
+| — | `agent/reasoner.py` | DeepSeek LLM with dynamic system prompt (posture/role/time-aware) |
+| T1 | `security/risk_model.py` | Deterministic risk score (1-10), manifest-derived |
+| T2 | `security/constraints.py` | Dual-path: structured tool semantics + raw regex; role-based thresholds; path/content inspection |
+| T3 | `security/sandbox.py` | Allowlist enforcement, tiered execution (auto/confirm/veto), `sudo -n` |
+| — | `auth/key_store.py` | SHA256-hashed API keys with role assignment (admin/operator/viewer) |
+| — | `middleware/auth.py` | Bearer token middleware, public path whitelist |
+| — | `audit/store.py` | Append-only JSONL with SHA256 hash chain, cross-restart persistence |
+| — | `audit/baseline.py` | Daily behavioral profiles + 3σ anomaly detection |
+| — | `agent/session_store.py` | Per-session conversation history with TTL eviction |
+| — | `agent/proactive.py` | Scheduled system inspection (disk/memory/services) every 5 min |
 
-## Tool naming convention
-
-All 9 tools defined in a single source of truth — `agent/tools_manifest.py`:
+## Defense layers
 
 ```
-llm_name            →  mcp_name          →  sandbox name
-ps_processes        →  get_processes     →  ps
-df_disk             →  get_disk          →  df
-free_memory         →  get_memory        →  free
-netstat_connections →  get_connections   →  ss
-journalctl_logs     →  journalctl_logs   →  journalctl
-systemctl_status    →  systemctl_status  →  systemctl
-get_services        →  get_services      →  systemctl
-lsof_files          →  lsof_files        →  lsof
-rpm_verify          →  rpm_verify        →  rpm
+Layer 1: Dynamic System Prompt → "你是viewer" → LLM refuses dangerous commands
+Layer 2: T2 constraints.py      → destructive tool / dangerous path / role veto
+Layer 3: Guardrail tier check   → viewer + confirm-tier → VETO
+Layer 4: T3 sandbox             → allowlist whitelist, sudo -n
 ```
 
-Every module (reasoner system prompt, MCP registry, sandbox allowlist, risk model) derives its tool lists from the manifest.
+All four layers are deterministic code — no LLM participates in security decisions.
+
+## Tools (16)
+
+| Type | Tools |
+|------|-------|
+| Read-only (9) | ps_processes, df_disk, free_memory, netstat_connections, journalctl_logs, systemctl_status, get_services, lsof_files, rpm_verify |
+| Confirm (4) | systemctl_restart, journalctl_clean, kill_process, truncate_log |
+| File ops (3) | create_file, append_file, execute_script |
+
+File ops enforce path whitelist (/etc /boot /sys /proc /root blocked) and content inspection (dangerous patterns upgrade to confirm tier).
+
+## Roles
+
+| Role | Threshold offset | Tool scope |
+|------|---------|-------------|
+| Admin | +2 | All tools, lower confirm bar |
+| Operator | 0 | All tools, standard confirm |
+| Viewer | -999 | Read-only only |
 
 ## Setup
 
@@ -52,64 +72,83 @@ python main.py          # starts on port 8008
 
 | `AGENT_MODE` | LLM provider | OS sensor | Use case |
 |--------------|-------------|-----------|----------|
-| `mock` | MockProvider (deterministic) | MockOSSensor (fake data) | Development / testing |
-| `live` | MockProvider (deterministic) | RealOSSensor (real `ps`/`df`/`free`/`ss`) | VM demo (no LLM API) |
-| (default) | DeepSeek API | MockOSSensor | LLM evaluation |
-
-Combine `live` sensor with DeepSeek by removing `AGENT_MODE` + setting the API key.
+| `mock` | MockProvider | MockOSSensor | Dev / testing |
+| `live` | MockProvider | RealOSSensor | VM demo (no LLM) |
+| `default` | DeepSeek API | RealOSSensor | Production |
 
 ## API
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/chat` | POST | Main pipeline: `{"user_id":"...", "input":"..."}` |
-| `/api/confirm` | POST | Confirm/deny pending command: `{"event_id":"...", "confirmed":true}` |
-| `/api/pending` | GET | List pending confirmations for user |
-| `/api/context` | GET | Current system context |
-| `/api/posture` | GET | Risk posture and veto/drift stats |
-| `/api/audit/trail` | GET | Query audit trail (date range) |
-| `/api/audit/event/{id}` | GET | Single audit event by ID |
-| `/api/audit/verify` | GET | Verify audit chain integrity |
-| `/api/mcp/tools` | GET | List registered MCP tools |
-| `/mcp` | POST | Raw MCP protocol endpoint |
-| `/stream` | WS | WebSocket for context push |
-| `/health` | GET | Health check |
+| Endpoint | Method | Auth | Description |
+|----------|--------|------|-------------|
+| `/api/chat` | POST | Bearer | Main pipeline with streaming support |
+| `/api/chat/stream` | POST | Bearer | SSE streaming variant |
+| `/api/confirm` | POST | Bearer | Confirm/deny pending (viewer blocked) |
+| `/api/pending` | GET | Bearer | List pending confirmations |
+| `/api/context` | GET | Public | Role-gated system context |
+| `/api/whoami` | GET | Public | Current user identity |
+| `/api/posture` | GET | Public | Risk posture, veto count, drift log |
+| `/api/inspect` | GET | Public | Latest proactive inspection |
+| `/api/baseline` | GET | Admin | Baseline profiles + anomaly detection |
+| `/api/audit/trail` | GET | Admin | Query audit trail |
+| `/api/audit/event/{id}` | GET | Admin | Single audit event |
+| `/api/audit/verify` | GET | Admin | Verify SHA256 chain integrity |
+| `/api/session/{id}` | GET | Bearer | Session history |
+| `/api/mcp/tools` | GET | Public | Registered MCP tools |
+| `/mcp` | POST | Bearer | Raw MCP protocol |
+| `/stream` | WS | Token | WebSocket with auth |
+| `/health` | GET | Public | DeepSeek reachability + posture |
 
 ## Risk postures
 
-| Posture | T2 confirm threshold | Audit intensity | Auto-triggers |
-|---------|---------------------|-----------------|---------------|
-| `permissive` | 7 | full | — |
+| Posture | T2 confirm threshold | Audit | Auto-triggers |
+|---------|---------------------|-------|---------------|
+| `restrictive` | 0 | summary | 2 vetos, nighttime (22-06) |
 | `balanced` (default) | 5 | normal | — |
-| `restrictive` | 2 | summary | 2 vetos, night-time (22-06) |
+| `permissive` | 7 | full | Manual opt-in |
+
+Veto decay: 1h. Auto-regress: 24h no veto → balanced.
 
 ## Testing
 
 ```bash
 cd backend
-python -m pytest tests/ -v          # Run all 108+ tests
+python -m pytest tests/ -v          # 135 tests, all structural
 ```
 
 | Test file | Tests | Coverage |
 |-----------|------:|----------|
-| `test_guardrail.py` | 15 | T0-T3 unit tests |
+| `test_guardrail.py` | 15 | T0-T3 individual layers |
 | `test_pipeline.py` | 11 | E2E pipeline + audit chain |
-| `test_risk_posture.py` | 8 | Posture engine state machine |
-| `test_jailbreak.py` | 4 | Jailbreak attack vectors |
+| `test_risk_posture.py` | 8 | Posture state machine |
+| `test_jailbreak.py` | 4 | Known attack vectors |
 | `test_jailbreak_corpus.py` | 5 | 35-entry corpus regression |
 | `test_key_auth.py` | 17 | KeyStore CRUD + role thresholds |
-| `test_confirm_audit_api.py` | 9 | Confirm flow + audit endpoints |
-| `test_api.py` | 11 | HTTP-level API tests |
-| `test_pessimistic.py` | 19 | Edge cases, concurrency, manifest |
-| `test_session_store.py` | 10 | Session TTL, history, concurrency |
+| `test_confirm_audit_api.py` | 9 | Confirm/deny flow + audits |
+| `test_api.py` | 11 | HTTP-level integration |
+| `test_pessimistic.py` | 19 | Edge cases, concurrency |
+| `test_session_store.py` | 10 | Session TTL, concurrent access |
+| `test_semantic_ambiguity.py` | 7 | Chinese ambiguity corpus (25 cases) |
+| `test_baseline.py` | 9 | Baseline learning + 3σ detection |
 
-All structural — no LLM calls needed.
+All tests are structural — no LLM calls needed. Run in <1s.
+
+## Deploy
+
+```bash
+# On Kylin VM:
+tar xzf kylin-agent-deploy.tar.gz -C /opt/kylin-agent/
+cd /opt/kylin-agent
+sudo bash deploy/kylin-install.sh
+
+# Requires: /etc/sudoers.d/augustus-agent with NOPASSWD + !requiretty
+```
 
 ## Key design decisions
 
-- **Manifest as single source of truth** — tool names, params, risk levels defined once in `tools_manifest.py`; all modules derive their lists from it
-- **T2 dual-path validation** — structured tool semantics (primary) + raw regex (defense-in-depth); `rm -rf` patterns caught regardless of format
-- **Confirmation loop** — commands flagged by T1 risk score or T2 dangerous params require explicit user `POST /api/confirm` before execution
-- **Decay is checked on read** — `posture_for_prompt()` calls `_decay_veto_count()` before every LLM invocation, not just on veto/permit events
-- **PATH inherits from environment** — sandbox appends standard paths rather than replacing the OS PATH
-- **T0 Sanitizer uses internal ref counter** — rejection references are sequential `REF-00001-ROLE`, trivially auditable
+- **Manifest as single source of truth** — 16 tools, all modules derive from `tools_manifest.py`
+- **LLM is always distrusted** — T2/T3 are deterministic code; the LLM provides tool suggestions, security layers validate them
+- **Dynamic system prompt** — Posture, role, and time-of-day appended to base security rules (which are never removed)
+- **Defense-in-depth** — Four independent layers; bypassing one doesn't bypass all
+- **SHA256 audit chain** — Tamper-evident, cross-restart persistence, FOIA endpoints
+- **Proactive + baseline** — 5-min inspection + daily baseline + 3σ anomaly detection
+- **Role-gated visibility** — Anonymous sees nothing, viewer sees basic, admin sees full system

@@ -85,7 +85,9 @@ async def chat(request: Request, req: ChatRequest):
 
     # ── Stage 4: Security Validation ──
     guardrail.posture = posture_engine.posture
-    gr = guardrail.validate_commands(commands, role=role)
+    intent_profile = llm_result.get("intent_profile", {})
+    gr = guardrail.validate_commands(commands, role=role,
+                                     intent_profile=intent_profile)
     trail.validate(gr.command_results)
 
     if not gr.passed:

@@ -27,9 +27,11 @@ class Guardrail:
         return True, cleaned, ""
 
     def validate_commands(self, commands: List[dict], posture: str = None,
-                          role: str = "operator") -> GuardrailResult:
+                          role: str = "operator",
+                          intent_profile: dict = None) -> GuardrailResult:
         result = GuardrailResult()
         posture = posture or self.posture
+        intent_profile = intent_profile or {}
 
         for cmd in commands:
             cmd_str = cmd.get("command", cmd.get("tool", ""))
@@ -42,6 +44,7 @@ class Guardrail:
             # T2: structural validation on tool_name + params (not regex on concat string)
             validation: ValidationResult = self.constraints.validate(
                 base_cmd, posture, params=params, role=role,
+                intent_profile=intent_profile,
             )
             # Also run raw regex as defense-in-depth for escaped or unusual formats
             if validation.allowed and params:

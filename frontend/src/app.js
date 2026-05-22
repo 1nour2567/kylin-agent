@@ -81,6 +81,8 @@ document.addEventListener('DOMContentLoaded', () => {
   initTerminal();
   setInterval(fetchContext, 15000);
   setInterval(fetchPosture, 30000);
+  verifyChain();
+  setInterval(verifyChain, 60000);
   // Login button refreshes identity
   const loginBtn = document.getElementById('btn-login');
   if (loginBtn) {
@@ -258,6 +260,26 @@ function connectWS() {
     } catch (_) {}
   };
   state.ws.onclose = () => { setTimeout(connectWS, 3000); };
+}
+
+async function verifyChain() {
+  const status = document.getElementById('chain-status');
+  if (!status) return;
+  status.textContent = '...';
+  try {
+    const res = await authFetch('/api/audit/verify');
+    const data = await res.json();
+    if (data.chain_valid) {
+      status.textContent = data.event_count + ' OK';
+      status.style.color = '#3fb950';
+    } else {
+      status.textContent = 'BROKEN @' + data.first_mismatch;
+      status.style.color = '#f85149';
+    }
+  } catch(e) {
+    status.textContent = 'err';
+    status.style.color = '#8b949e';
+  }
 }
 
 function initTerminal() {

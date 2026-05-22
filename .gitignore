@@ -11,3 +11,8 @@ venv/
 *.swo
 dist/
 *.egg-info/
+data/audit/*.jsonl
+data/logs/*.log
+data/keys.json
+data/pending.json
+data/baseline/profiles.json

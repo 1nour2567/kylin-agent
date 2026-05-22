@@ -13,7 +13,8 @@ def verify_chain(events: list) -> tuple:
     if not events:
         return True, 0
 
-    prev_hash = ""
+    # Seed from first event's prev_hash — chain may span multiple days
+    prev_hash = events[0].get("prev_hash", "")
     for i, event in enumerate(events):
         stored_hash = event.get("event_hash", "")
         computed = hash_event({k: v for k, v in event.items() if k != "event_hash"}, prev_hash)

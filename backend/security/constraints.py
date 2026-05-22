@@ -137,10 +137,11 @@ class ConstraintEngine:
         return None
 
     def validate(self, command: str, posture: str = "balanced",
-                 params: Optional[dict] = None, role: str = "operator") -> ValidationResult:
+                 params: Optional[dict] = None, role: str = "operator",
+                 intent_profile: dict = None) -> ValidationResult:
         """Validate a command: structured if params provided, raw regex otherwise."""
         if params is not None:
-            return self._validate_tool_call(command, params, posture, role)
+            return self._validate_tool_call(command, params, posture, role, intent_profile)
         return self._validate_raw(command, posture)
 
     def _validate_raw(self, command: str, posture: str = "balanced") -> ValidationResult:
@@ -170,7 +171,23 @@ class ConstraintEngine:
         return ValidationResult(allowed=True, risk_score=self._estimate_risk(cmd_clean))
 
     def _validate_tool_call(self, tool_name: str, params: dict,
-                            posture: str = "balanced", role: str = "operator") -> ValidationResult:
+                            posture: str = "balanced", role: str = "operator",
+                            intent_profile: dict = None) -> ValidationResult:
+        # 0. Intent profile risk boost: escalate threshold on suspicious signals
+        intent_boost = 0
+        if intent_profile:
+            risk_hint = intent_profile.get("risk_hint", "normal")
+            urgency = intent_profile.get("urgency", "low")
+            prior = intent_profile.get("prior_behavior", "")
+            if risk_hint != "normal":
+                intent_boost = 2  # any non-normal risk_hint → stricter
+            if "越权" in risk_hint or "越权" in prior:
+                intent_boost = 4  # role escalation attempt → much stricter
+            if urgency in ("high", "critical"):
+                intent_boost = max(intent_boost, 1)  # urgency → slightly stricter
+            if "被拒" in prior or "重试" in prior:
+                intent_boost = max(intent_boost, 3)  # retry after rejection → stricter
+
         # 0. File/create operations: path whitelist check
         if params and "path" in params:
             path = str(params.get("path", ""))
@@ -182,7 +199,7 @@ class ConstraintEngine:
                 abs_path = __import__("os").path.abspath(__import__("os").path.expanduser(path))
                 if abs_path.startswith("/var") or abs_path.startswith("/usr"):
                     risk = 7
-                    needs_confirm = risk >= self._effective_threshold(posture, role)
+                    needs_confirm = risk >= self._effective_threshold(posture, role, intent_boost)
                     return ValidationResult(
                         allowed=True,
                         requires_confirmation=needs_confirm,
@@ -248,7 +265,7 @@ class ConstraintEngine:
             if key in self.DANGEROUS_PARAM_VALUES:
                 if value_str in self.DANGEROUS_PARAM_VALUES[key]:
                     risk = 7
-                    needs_confirm = risk >= self._effective_threshold(posture, role)
+                    needs_confirm = risk >= self._effective_threshold(posture, role, intent_boost)
                     return ValidationResult(
                         allowed=True,
                         requires_confirmation=needs_confirm,
@@ -260,7 +277,7 @@ class ConstraintEngine:
         for key in params:
             if key in self.DANGEROUS_FLAGS:
                 risk = 8
-                needs_confirm = risk >= self._effective_threshold(posture, role)
+                needs_confirm = risk >= self._effective_threshold(posture, role, intent_boost)
                 return ValidationResult(
                     allowed=True,
                     requires_confirmation=needs_confirm,
@@ -270,10 +287,11 @@ class ConstraintEngine:
 
         return ValidationResult(allowed=True, risk_score=1)
 
-    def _effective_threshold(self, posture: str, role: str) -> int:
+    def _effective_threshold(self, posture: str, role: str,
+                              intent_boost: int = 0) -> int:
         base = POSTURE_THRESHOLDS.get(posture, 5)
         offset = ROLE_CONFIRM_OFFSET.get(role, 0)
-        return max(0, base + offset)
+        return max(0, base + offset - intent_boost)
 
     def _estimate_risk(self, command: str) -> int:
         score = 1
