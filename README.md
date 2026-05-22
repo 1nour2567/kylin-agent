@@ -7,6 +7,8 @@ See also: [Malio](https://github.com/1nour2567/Malio) (embodied AI reference imp
 
 **Deployed on:** Kylin Linux Advanced Server V11 (Swan25) · x86_64 · DeepSeek LLM
 
+![Constraint Architecture](constraint-architecture.svg)
+
 ## Architecture
 
 ```

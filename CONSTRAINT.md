@@ -1,5 +1,7 @@
 # Constraint Architecture
 
+![Constraint Architecture 四层架构](constraint-architecture.svg)
+
 ## 一个 LLM Agent 该由什么定义它的边界？
 
 当前的主流做法：**Prompt 说了算。**

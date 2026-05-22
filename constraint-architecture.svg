@@ -1,0 +1,109 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 680" font-family="system-ui, -apple-system, sans-serif">
+  <defs>
+    <linearGradient id="layer1" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#7C3AED"/>
+      <stop offset="100%" stop-color="#A78BFA"/>
+    </linearGradient>
+    <linearGradient id="layer2" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#DC2626"/>
+      <stop offset="100%" stop-color="#F87171"/>
+    </linearGradient>
+    <linearGradient id="layer3" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#EA580C"/>
+      <stop offset="100%" stop-color="#FB923C"/>
+    </linearGradient>
+    <linearGradient id="layer4" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#0891B2"/>
+      <stop offset="100%" stop-color="#22D3EE"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="900" height="680" fill="#0F172A" rx="12"/>
+
+  <!-- Title -->
+  <text x="450" y="45" text-anchor="middle" fill="#F8FAFC" font-size="24" font-weight="700">Constraint Architecture</text>
+  <text x="450" y="68" text-anchor="middle" fill="#94A3B8" font-size="13">LLM reasons. Code decides what's allowed. Audit ensures no one can deny.</text>
+
+  <!-- Left col header: Kylin-Agent -->
+  <text x="60" y="110" fill="#A78BFA" font-size="10" font-weight="600" letter-spacing="1">KYLIN-AGENT</text>
+  <text x="60" y="124" fill="#94A3B8" font-size="9">安全运维 Agent</text>
+
+  <!-- Right col header: Malio -->
+  <text x="710" y="110" text-anchor="end" fill="#F472B6" font-size="10" font-weight="600" letter-spacing="1">MALIO</text>
+  <text x="710" y="124" text-anchor="end" fill="#94A3B8" font-size="9">具身化 AI 音乐 Agent</text>
+
+  <!-- Arrow down center -->
+  <line x1="450" y1="140" x2="450" y2="640" stroke="#334155" stroke-width="1" stroke-dasharray="4,4"/>
+
+  <!-- ======= LAYER 1: Reasoning ======= -->
+  <rect x="30" y="145" width="840" height="110" rx="8" fill="#1E1B4B" stroke="#7C3AED" stroke-width="1" opacity="0.9"/>
+
+  <!-- Left: Kylin -->
+  <text x="55" y="170" fill="#A78BFA" font-size="12" font-weight="600">Layer 1 — Reasoning (LLM)</text>
+  <text x="55" y="190" fill="#94A3B8" font-size="10">诊断 + 工具选择 + Agentic Loop</text>
+  <text x="55" y="208" fill="#CBD5E1" font-size="9">"帮我排查系统健康状态" → 3轮5命令</text>
+  <text x="55" y="224" fill="#CBD5E1" font-size="9">逐步深入: free → ps --sort → journalctl</text>
+
+  <!-- Right: Malio -->
+  <text x="845" y="170" text-anchor="end" fill="#F472B6" font-size="12" font-weight="600">Layer 1 — Reasoning (LLM)</text>
+  <text x="845" y="190" text-anchor="end" fill="#94A3B8" font-size="10">氛围感知 + DSL 规则创作 + 自主心跳</text>
+  <text x="845" y="208" text-anchor="end" fill="#CBD5E1" font-size="9">"现在是清晨，阳光正好" → atmosphere JSON</text>
+  <text x="845" y="224" text-anchor="end" fill="#CBD5E1" font-size="9">Proactive Heartbeat: energy驱动脉搏 3-20min</text>
+
+  <!-- Down arrow -->
+  <polygon points="447,260 453,260 450,268" fill="#475569"/>
+
+  <!-- ======= LAYER 2: Constraints ======= -->
+  <rect x="30" y="275" width="840" height="110" rx="8" fill="#1C1616" stroke="#DC2626" stroke-width="1" opacity="0.9"/>
+
+  <text x="55" y="300" fill="#F87171" font-size="12" font-weight="600">Layer 2 — Constraints (Deterministic)</text>
+  <text x="55" y="320" fill="#94A3B8" font-size="10">T0注入(24正则) + T1风险(1-10) + T2双路径</text>
+  <text x="55" y="338" fill="#CBD5E1" font-size="9">structured tool params + raw regex 互补</text>
+  <text x="55" y="354" fill="#CBD5E1" font-size="9">角色阈值 + Intent Profile + 动态姿态</text>
+
+  <text x="845" y="300" text-anchor="end" fill="#F472B6" font-size="12" font-weight="600">Layer 2 — Constraints (Deterministic)</text>
+  <text x="845" y="320" text-anchor="end" fill="#94A3B8" font-size="10">PersonaEngine + DSL 规则引擎 + VisualAgent</text>
+  <text x="845" y="338" text-anchor="end" fill="#CBD5E1" font-size="9">energy&lt;0.3 → block light_burst</text>
+  <text x="845" y="354" text-anchor="end" fill="#CBD5E1" font-size="9">规则治理: 死规则归档/冲突降级/hits评分</text>
+
+  <polygon points="447,390 453,390 450,398" fill="#475569"/>
+
+  <!-- ======= LAYER 3: Execution ======= -->
+  <rect x="30" y="405" width="840" height="110" rx="8" fill="#1C160E" stroke="#EA580C" stroke-width="1" opacity="0.9"/>
+
+  <text x="55" y="430" fill="#FB923C" font-size="12" font-weight="600">Layer 3 — Execution (Sandbox)</text>
+  <text x="55" y="450" fill="#94A3B8" font-size="10">auto / confirm / veto 三级执行</text>
+  <text x="55" y="468" fill="#CBD5E1" font-size="9">auto: ps/df/free 直接跑 · confirm: 需确认后 sudo -n</text>
+  <text x="55" y="484" fill="#CBD5E1" font-size="9">veto: rm/chmod/mkfs 永不可执行</text>
+
+  <text x="845" y="430" text-anchor="end" fill="#F472B6" font-size="12" font-weight="600">Layer 3 — Execution (Sandbox)</text>
+  <text x="845" y="450" text-anchor="end" fill="#94A3B8" font-size="10">VisualAgent DSL 评估 + Feedback push</text>
+  <text x="845" y="468" text-anchor="end" fill="#CBD5E1" font-size="9">60fps粒子渲染 · 9大物理系统</text>
+  <text x="845" y="484" text-anchor="end" fill="#CBD5E1" font-size="9">约束后的行动: speak/act/rule/silent/think</text>
+
+  <polygon points="447,520 453,520 450,528" fill="#475569"/>
+
+  <!-- ======= LAYER 4: Audit ======= -->
+  <rect x="30" y="535" width="840" height="95" rx="8" fill="#0F1A1E" stroke="#0891B2" stroke-width="1" opacity="0.9"/>
+
+  <text x="55" y="560" fill="#22D3EE" font-size="12" font-weight="600">Layer 4 — Audit (Immutable Record)</text>
+  <text x="55" y="580" fill="#94A3B8" font-size="10">SHA256(prev_hash + event) 链式绑定</text>
+  <text x="55" y="598" fill="#CBD5E1" font-size="9">篡改检测 · _seed_from_disk 重启恢复</text>
+  <text x="55" y="614" fill="#CBD5E1" font-size="9">基线学习 + 3σ异常 + 主动巡检联动</text>
+
+  <text x="845" y="560" text-anchor="end" fill="#F472B6" font-size="12" font-weight="600">Layer 4 — Audit (Lightweight)</text>
+  <text x="845" y="580" text-anchor="end" fill="#94A3B8" font-size="10">OODA 规则反馈闭环 + FOIA 审计日志</text>
+  <text x="845" y="598" text-anchor="end" fill="#CBD5E1" font-size="9">死规则归档 · 冲突降级 · hits评分</text>
+  <text x="845" y="614" text-anchor="end" fill="#CBD5E1" font-size="9">规则健康每30s评估 — 约束持续修正</text>
+
+  <!-- Center column: architecture labels -->
+  <text x="450" y="178" text-anchor="middle" fill="#7C3AED" font-size="9" font-weight="600">自由推理</text>
+  <text x="450" y="308" text-anchor="middle" fill="#DC2626" font-size="9" font-weight="600">代码约束</text>
+  <text x="450" y="438" text-anchor="middle" fill="#EA580C" font-size="9" font-weight="600">分级执行</text>
+  <text x="450" y="570" text-anchor="middle" fill="#0891B2" font-size="9" font-weight="600">不可抵赖</text>
+
+  <!-- Design principle at bottom -->
+  <text x="450" y="655" text-anchor="middle" fill="#64748B" font-size="11" font-style="italic">LLM 负责想。代码负责决定能不能做。审计负责事后不可抵赖。</text>
+
+</svg>
