@@ -2,6 +2,9 @@
 
 Security-hardened AI operations agent for Kylin OS.  Natural language → classifier → dynamic system prompt → T0-T3 security validation → sandboxed execution.
 
+**Security reference implementation of [Constraint Architecture](https://github.com/1nour2567/kylin-agent/blob/master/CONSTRAINT.md) — LLM reasons. Code decides what's allowed.**
+See also: [Malio](https://github.com/1nour2567/Malio) (embodied AI reference implementation).
+
 **Deployed on:** Kylin Linux Advanced Server V11 (Swan25) · x86_64 · DeepSeek LLM
 
 ## Architecture
