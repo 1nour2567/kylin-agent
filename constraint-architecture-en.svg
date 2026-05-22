@@ -1,0 +1,103 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 680" font-family="system-ui, -apple-system, sans-serif">
+  <defs>
+    <linearGradient id="l1" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#7C3AED"/>
+      <stop offset="100%" stop-color="#A78BFA"/>
+    </linearGradient>
+    <linearGradient id="l2" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#DC2626"/>
+      <stop offset="100%" stop-color="#F87171"/>
+    </linearGradient>
+    <linearGradient id="l3" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#EA580C"/>
+      <stop offset="100%" stop-color="#FB923C"/>
+    </linearGradient>
+    <linearGradient id="l4" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#0891B2"/>
+      <stop offset="100%" stop-color="#22D3EE"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="900" height="680" fill="#0F172A" rx="12"/>
+
+  <text x="450" y="45" text-anchor="middle" fill="#F8FAFC" font-size="24" font-weight="700">Constraint Architecture</text>
+  <text x="450" y="68" text-anchor="middle" fill="#94A3B8" font-size="13">LLM reasons. Code decides what's allowed. Audit ensures no one can deny.</text>
+
+  <!-- Left col -->
+  <text x="60" y="110" fill="#A78BFA" font-size="10" font-weight="600" letter-spacing="1">KYLIN-AGENT</text>
+  <text x="60" y="124" fill="#94A3B8" font-size="9">Security Ops Agent</text>
+
+  <!-- Right col -->
+  <text x="840" y="110" text-anchor="end" fill="#F472B6" font-size="10" font-weight="600" letter-spacing="1">MALIO</text>
+  <text x="840" y="124" text-anchor="end" fill="#94A3B8" font-size="9">Embodied AI Music Agent</text>
+
+  <line x1="450" y1="140" x2="450" y2="640" stroke="#334155" stroke-width="1" stroke-dasharray="4,4"/>
+
+  <!-- Layer 1 -->
+  <rect x="30" y="145" width="840" height="110" rx="8" fill="#1E1B4B" stroke="#7C3AED" stroke-width="1" opacity="0.9"/>
+
+  <text x="55" y="170" fill="#A78BFA" font-size="12" font-weight="600">Layer 1 — Reasoning (LLM)</text>
+  <text x="55" y="190" fill="#94A3B8" font-size="10">Diagnosis + tool selection + Agentic Loop</text>
+  <text x="55" y="208" fill="#CBD5E1" font-size="9">"diagnose system health" → 3 turns, 5 commands</text>
+  <text x="55" y="224" fill="#CBD5E1" font-size="9">free → ps --sort → journalctl step by step</text>
+
+  <text x="845" y="170" text-anchor="end" fill="#F472B6" font-size="12" font-weight="600">Layer 1 — Reasoning (LLM)</text>
+  <text x="845" y="190" text-anchor="end" fill="#94A3B8" font-size="10">Atmosphere + DSL rule creation + Proactive Heartbeat</text>
+  <text x="845" y="208" text-anchor="end" fill="#CBD5E1" font-size="9">"it's early morning, sunny" → atmosphere JSON</text>
+  <text x="845" y="224" text-anchor="end" fill="#CBD5E1" font-size="9">Persona-driven pulse: energy → 3–20 min intervals</text>
+
+  <polygon points="447,260 453,260 450,268" fill="#475569"/>
+
+  <!-- Layer 2 -->
+  <rect x="30" y="275" width="840" height="110" rx="8" fill="#1C1616" stroke="#DC2626" stroke-width="1" opacity="0.9"/>
+
+  <text x="55" y="300" fill="#F87171" font-size="12" font-weight="600">Layer 2 — Constraints (Deterministic)</text>
+  <text x="55" y="320" fill="#94A3B8" font-size="10">T0 injection (24 regex) + T1 risk (1-10) + T2 dual-path</text>
+  <text x="55" y="338" fill="#CBD5E1" font-size="9">structured tool params + raw regex, two paths</text>
+  <text x="55" y="354" fill="#CBD5E1" font-size="9">role thresholds + Intent Profile + dynamic posture</text>
+
+  <text x="845" y="300" text-anchor="end" fill="#F472B6" font-size="12" font-weight="600">Layer 2 — Constraints (Deterministic)</text>
+  <text x="845" y="320" text-anchor="end" fill="#94A3B8" font-size="10">PersonaEngine + DSL rule engine + VisualAgent</text>
+  <text x="845" y="338" text-anchor="end" fill="#CBD5E1" font-size="9">energy &lt; 0.3 → block light_burst</text>
+  <text x="845" y="354" text-anchor="end" fill="#CBD5E1" font-size="9">rule governance: archive / merge / conflict resolve</text>
+
+  <polygon points="447,390 453,390 450,398" fill="#475569"/>
+
+  <!-- Layer 3 -->
+  <rect x="30" y="405" width="840" height="110" rx="8" fill="#1C160E" stroke="#EA580C" stroke-width="1" opacity="0.9"/>
+
+  <text x="55" y="430" fill="#FB923C" font-size="12" font-weight="600">Layer 3 — Execution (Sandbox)</text>
+  <text x="55" y="450" fill="#94A3B8" font-size="10">auto / confirm / veto — 3-tier execution</text>
+  <text x="55" y="468" fill="#CBD5E1" font-size="9">auto: ps/df/free run directly · confirm: requires sudo -n</text>
+  <text x="55" y="484" fill="#CBD5E1" font-size="9">veto: rm/chmod/mkfs — never executable</text>
+
+  <text x="845" y="430" text-anchor="end" fill="#F472B6" font-size="12" font-weight="600">Layer 3 — Execution (Sandbox)</text>
+  <text x="845" y="450" text-anchor="end" fill="#94A3B8" font-size="10">VisualAgent DSL eval + Feedback push</text>
+  <text x="845" y="468" text-anchor="end" fill="#CBD5E1" font-size="9">60fps particle render · 9 physics systems</text>
+  <text x="845" y="484" text-anchor="end" fill="#CBD5E1" font-size="9">5 outputs: speak / act / rule / silent / think</text>
+
+  <polygon points="447,520 453,520 450,528" fill="#475569"/>
+
+  <!-- Layer 4 -->
+  <rect x="30" y="535" width="840" height="95" rx="8" fill="#0F1A1E" stroke="#0891B2" stroke-width="1" opacity="0.9"/>
+
+  <text x="55" y="560" fill="#22D3EE" font-size="12" font-weight="600">Layer 4 — Audit (Immutable Record)</text>
+  <text x="55" y="580" fill="#94A3B8" font-size="10">SHA256(prev_hash + event) chain</text>
+  <text x="55" y="598" fill="#CBD5E1" font-size="9">tamper detection · _seed_from_disk on restart</text>
+  <text x="55" y="614" fill="#CBD5E1" font-size="9">baseline learning + 3σ anomaly + inspector</text>
+
+  <text x="845" y="560" text-anchor="end" fill="#F472B6" font-size="12" font-weight="600">Layer 4 — Audit (Lightweight)</text>
+  <text x="845" y="580" text-anchor="end" fill="#94A3B8" font-size="10">OODA rule feedback loop + FOIA audit log</text>
+  <text x="845" y="598" text-anchor="end" fill="#CBD5E1" font-size="9">dead rule archive · conflict downgrade · hits score</text>
+  <text x="845" y="614" text-anchor="end" fill="#CBD5E1" font-size="9">rule health every 30s — continuous correction</text>
+
+  <!-- Center column labels -->
+  <text x="450" y="178" text-anchor="middle" fill="#7C3AED" font-size="9" font-weight="600">Free Reasoning</text>
+  <text x="450" y="308" text-anchor="middle" fill="#DC2626" font-size="9" font-weight="600">Code Constraints</text>
+  <text x="450" y="438" text-anchor="middle" fill="#EA580C" font-size="9" font-weight="600">Tiered Execution</text>
+  <text x="450" y="570" text-anchor="middle" fill="#0891B2" font-size="9" font-weight="600">Non-Repudiable</text>
+
+  <!-- Bottom principle -->
+  <text x="450" y="655" text-anchor="middle" fill="#64748B" font-size="11" font-style="italic">LLM reasons. Code decides what's allowed. Audit ensures no one can deny.</text>
+
+</svg>
