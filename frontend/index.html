@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kylin OS Security Agent</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.min.css">
+<style>
+:root {
+  --bg: #0d1117;
+  --bg-card: #161b22;
+  --border: #30363d;
+  --text: #c9d1d9;
+  --text-muted: #8b949e;
+  --accent: #58a6ff;
+  --danger: #f85149;
+  --warn: #d29922;
+  --ok: #3fb950;
+  --critical: #da3633;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: var(--bg); color: var(--text);
+  height: 100vh; display: flex; flex-direction: column;
+}
+header {
+  background: var(--bg-card); border-bottom: 1px solid var(--border);
+  padding: 10px 20px; display: flex; align-items: center; gap: 12px;
+  flex-shrink: 0;
+}
+header h1 { font-size: 16px; font-weight: 600; }
+header .badge {
+  font-size: 11px; padding: 2px 8px; border-radius: 10px;
+  background: rgba(88,166,255,0.15); color: var(--accent);
+}
+main {
+  flex: 1; display: flex; overflow: hidden;
+}
+.panel {
+  display: flex; flex-direction: column;
+  border-right: 1px solid var(--border);
+  overflow: hidden;
+}
+.panel:last-child { border-right: none; }
+.panel-header {
+  padding: 10px 16px; font-size: 12px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.5px;
+  color: var(--text-muted); border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+#context-panel { width: 260px; }
+#chat-panel { flex: 1; }
+#audit-panel { width: 320px; }
+
+#context-content, #audit-content {
+  flex: 1; overflow-y: auto; padding: 12px;
+}
+.metric { margin-bottom: 12px; }
+.metric-label { font-size: 11px; color: var(--text-muted); margin-bottom: 2px; }
+.metric-value { font-size: 14px; }
+.metric-value.ok { color: var(--ok); }
+.metric-value.warn { color: var(--warn); }
+.metric-value.critical { color: var(--critical); }
+
+.service-item, .process-item {
+  font-size: 12px; padding: 4px 0; border-bottom: 1px solid rgba(48,54,61,0.5);
+  display: flex; justify-content: space-between;
+}
+.service-item .running { color: var(--ok); }
+.service-item .stopped { color: var(--danger); }
+
+#chat-messages {
+  flex: 1; overflow-y: auto; padding: 16px;
+}
+.msg { margin-bottom: 14px; }
+.msg-user .content { background: rgba(88,166,255,0.1); border: 1px solid rgba(88,166,255,0.2); }
+.msg-agent .content { background: var(--bg-card); border: 1px solid var(--border); }
+.msg .content {
+  padding: 10px 14px; border-radius: 8px; font-size: 13px; line-height: 1.6;
+  white-space: pre-wrap; word-break: break-word;
+}
+.msg .label { font-size: 11px; color: var(--text-muted); margin-bottom: 4px; }
+
+.chat-input-wrap {
+  padding: 12px 16px; border-top: 1px solid var(--border);
+  display: flex; gap: 8px; flex-shrink: 0;
+}
+.chat-input-wrap input {
+  flex: 1; padding: 8px 12px; border-radius: 6px;
+  border: 1px solid var(--border); background: var(--bg);
+  color: var(--text); font-size: 13px; outline: none;
+}
+.chat-input-wrap input:focus { border-color: var(--accent); }
+.chat-input-wrap button {
+  padding: 8px 16px; border-radius: 6px; border: none;
+  background: var(--accent); color: #fff; font-size: 13px; cursor: pointer;
+}
+.chat-input-wrap button:disabled { opacity: 0.5; }
+
+.audit-event {
+  font-size: 11px; padding: 4px 8px; margin-bottom: 4px;
+  border-radius: 4px; border-left: 3px solid var(--border);
+}
+.audit-event.receive { border-left-color: var(--accent); }
+.audit-event.veto { border-left-color: var(--danger); }
+.audit-event.completed { border-left-color: var(--ok); }
+.audit-event .ts { color: var(--text-muted); }
+
+#terminal-container {
+  height: 200px; border-top: 1px solid var(--border); flex-shrink: 0;
+}
+
+.confirm-bar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 14px; margin: 8px 0; border-radius: 8px;
+  background: rgba(210,153,34,0.08); border: 1px solid rgba(210,153,34,0.3);
+}
+.confirm-hint { font-size: 12px; color: var(--warn); flex: 1; }
+.btn-confirm {
+  padding: 6px 14px; border-radius: 6px; border: none;
+  font-size: 12px; cursor: pointer; font-weight: 600;
+}
+.btn-approve { background: var(--ok); color: #fff; }
+.btn-approve:hover { background: #2ea043; }
+.btn-deny { background: var(--danger); color: #fff; }
+.btn-deny:hover { background: #da3633; }
+
+.toast {
+  position: fixed; bottom: 20px; right: 20px; padding: 10px 20px;
+  border-radius: 8px; background: var(--bg-card); border: 1px solid var(--border);
+  font-size: 13px; z-index: 9999; animation: fadeIn 0.3s;
+}
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+</style>
+</head>
+<body>
+<header>
+  <h1>麒麟 OS 安全智能运维 Agent</h1>
+  <span class="badge" id="posture-badge">balanced</span>
+  <span id="identity-display" style="font-size:12px;margin:0 8px;"></span>
+  <input id="api-key-input" type="password" placeholder="API Key (留空=匿名) 按回车登录"
+    style="background:var(--bg);border:1px solid var(--border);color:var(--text);
+           padding:4px 10px;border-radius:6px;font-size:12px;width:260px;"
+    onchange="localStorage.setItem('apiKey',this.value)">
+  <script>
+  // Inline: must work even before app.js loads
+  function doLogin() {
+    var el = document.getElementById('api-key-input');
+    var key = el ? el.value.trim() : '';
+    console.log('doLogin: key length=' + key.length + ' prefix=' + key.substring(0,10));
+    localStorage.setItem('apiKey', key);
+    fetch('/api/whoami', { headers: { 'Authorization': 'Bearer ' + key } })
+      .then(r => { console.log('whoami status=' + r.status); return r.json(); })
+      .then(d => {
+        console.log('whoami data:', JSON.stringify(d));
+        var disp = document.getElementById('identity-display');
+        if (!disp) { console.log('no identity-display element'); return; }
+        if (!d.role || d.role === 'anonymous') {
+          disp.innerHTML = '<span style=\"color:#8b949e\">未登录</span>';
+          console.log('set: 未登录');
+        } else {
+          var colors = { admin: '#3fb950', operator: '#d29922', viewer: '#58a6ff' };
+          var labels = { admin: '管理员', operator: '运维', viewer: '访客' };
+          var html = '<span style=\"color:' + (colors[d.role]||'#8b949e') + ';font-weight:600\">' + (labels[d.role]||d.role) + '</span> <span style=\"color:#8b949e\">|</span> ' + (d.user_id||'?');
+          disp.innerHTML = html;
+          console.log('set: ' + html);
+        }
+      })
+      .catch(e => console.error('whoami error:', e));
+    fetch('/api/context', { headers: { 'Authorization': 'Bearer ' + key } })
+      .then(r => { console.log('context status=' + r.status); return r.json(); })
+      .then(d => { console.log('context done'); })
+      .catch(e => console.error('context error:', e));
+  }
+  </script>
+  <button id="btn-login" onclick="doLogin();return false;"
+    style="padding:4px 12px;border-radius:6px;border:1px solid var(--accent);
+           background:rgba(88,166,255,0.1);color:var(--accent);font-size:12px;cursor:pointer;">
+    登录</button>
+  <span style="font-size:11px;color:var(--text-muted);margin-left:auto;">Kylin V11 + x86_64</span>
+</header>
+
+<main>
+  <div class="panel" id="context-panel">
+    <div class="panel-header">系统状态</div>
+    <div id="context-content"></div>
+  </div>
+
+  <div class="panel" id="chat-panel">
+    <div class="panel-header">对话</div>
+    <div id="chat-messages">
+      <div class="msg msg-agent">
+        <div class="label">Agent</div>
+        <div class="content">你好，我是麒麟 OS 安全智能运维 Agent。<br>我可以帮你诊断系统问题、查看服务状态、分析日志。<br><br>试试说：<br>"nginx 服务无法访问，帮我排查"<br>"查看磁盘使用情况"</div>
+      </div>
+    </div>
+    <div id="terminal-container"></div>
+    <div class="chat-input-wrap">
+      <input id="chat-input" type="text" placeholder="输入运维指令..." autofocus>
+      <button id="btn-send">发送</button>
+    </div>
+  </div>
+
+  <div class="panel" id="audit-panel">
+    <div class="panel-header">审计链</div>
+    <div id="audit-content">
+      <div style="font-size:11px;color:var(--text-muted);">等待交互...</div>
+    </div>
+  </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.min.js"></script>
+<script src="src/app.js?v=10"></script>
+</body>
+</html>
