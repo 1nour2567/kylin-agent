@@ -28,7 +28,7 @@ Copyright (c) 2026 1nour2567. MIT License.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
 from enum import Enum
 from typing import (
     Any,
@@ -42,7 +42,7 @@ from typing import (
     Tuple,
 )
 
-__version__ = "1.4.0"
+__version__ = "1.5.0"
 __all__ = [
     # Data
     "ValidationResult",
@@ -201,15 +201,28 @@ class AuditEvent:
     """One event in the immutable audit chain.
 
     event_hash = SHA256(prev_hash + serialized event data).
-    prev_hash is the hash of the immediately preceding event
-    (empty string for the genesis event).
+    prev_hash is REQUIRED — the caller MUST provide the hash of the
+    immediately preceding event ("" for the genesis event).  Making
+    prev_hash positional prevents accidentally omitting it.
+
+    event_hash is computed by AuditTrail.record(), not by this class.
+    The skeleton does not enforce SHA256 correctness here — that
+    enforcement belongs to the concrete AuditTrail implementation.
     """
+    prev_hash: str                              # REQUIRED — "" for genesis, otherwise prior event's hash
     event_type: EventType
     actor: str
     timestamp: str
     data: Dict[str, Any] = field(default_factory=dict)
-    event_hash: str = ""
-    prev_hash: str = ""
+    event_hash: str = ""                        # set by AuditTrail.record() after construction
+
+    def __post_init__(self):
+        # prev_hash must be a non-None string (empty string = genesis, explicit)
+        if not isinstance(self.prev_hash, str):
+            raise ValueError(
+                f"prev_hash must be str (empty for genesis), "
+                f"got {type(self.prev_hash).__name__}"
+            )
 
 
 @dataclass
@@ -232,7 +245,7 @@ class PipelineContext:
     conversation_history: List[Dict[str, str]] = field(default_factory=list)
     system_snapshot: Dict[str, Any] = field(default_factory=dict)
     time_of_day: str = ""                           # morning / afternoon / evening / night
-    hour: Optional[int] = None                  # 0-23.  None = unknown. Caller MUST keep these consistent
+    hour: Optional[int] = None                  # 0-23.  None = unknown.  hour and time_of_day MUST be consistent — the caller is responsible for keeping them in sync
     audit_recent: List[Dict[str, Any]] = field(default_factory=list)
 
 
@@ -358,7 +371,7 @@ class ToolDefinition:
 # Shell — User & Developer Interface
 # ═══════════════════════════════════════════════════════════════════
 
-# ToolProvider is defined below alongside AgentTools.
+# ToolProvider is defined in the Tools section at the end of this file.
 # With "from __future__ import annotations", forward references are
 # stringified — safe to use before the class body is parsed.
 
@@ -568,11 +581,14 @@ class AgentScheduler(ABC):
     def cancel(self, task_id: str) -> bool:
         """Cancel a scheduled task by id.  Returns True if found and cancelled.
 
-        Default: return False.  Implementations that support cancellation
-        must override.  This is not abstract so existing implementations
-        don't break.
+        Default raises NotImplementedError — implementations that support
+        cancellation must override.  This is not abstract so existing
+        implementations that don't support cancellation can keep working,
+        but callers get a clear signal rather than a silent False.
         """
-        return False
+        raise NotImplementedError(
+            f"{type(self).__name__}.cancel is not implemented"
+        )
 
     @abstractmethod
     async def loop(self, context: PipelineContext,
@@ -1236,156 +1252,14 @@ class ToolProvider(Protocol):
 
 
 # ═══════════════════════════════════════════════════════════════════
-# Reference pipeline — documentation-as-code
-# ═══════════════════════════════════════════════════════════════════
-#
-# This pipeline wires the four layers into one request flow for a
-# Kylin-Agent-style "commands" domain.  It is ONE way to wire the
-# layers — not THE way.  Malio wires them differently:
-#   reason → persona filter (each core_action) → rule push → feedback
-#
-# Copy this class into your project and modify the wiring to match
-# your domain's layer-1 output format.  The ABCs above are the
-# contract; this class is just an example.
-
-
-class ConstraintPipeline:
-    """One turn of Kylin-Agent-style constraint flow.
-
-    This is an EXAMPLE, not a framework.  The inputs and outputs are
-    Kylin-specific:  layer 1 outputs "commands", layer 2 validates one
-    per command, layer 3 executes with resolve_command().  Malio would
-    use different keys and a different loop — but the same four ABCs.
-
-    Minimal usage:
-
-        pipe = ConstraintPipeline(reasoner, constraint_engine,
-                                  executor, audit_trail)
-        result = await pipe.run(PipelineContext(
-            user_input="restart nginx service",
-            user_id="alice", role="operator",
-        ))
-    """
-
-    def __init__(
-        self,
-        reasoner: ReasoningLayer,
-        constraint: ConstraintEngine,
-        executor: ExecutionProxy,
-        audit: AuditTrail,
-    ):
-        if reasoner is None or constraint is None or executor is None or audit is None:
-            raise TypeError("All four layers must be provided (none is None)")
-        self._reasoner = reasoner
-        self._constraint = constraint
-        self._executor = executor
-        self._audit = audit
-
-    async def run(self, context: PipelineContext) -> Dict[str, Any]:
-        """Execute one full turn of the constraint pipeline.
-
-        Returns a dict with key 'status' ∈ {completed, vetoed,
-        confirmation_required}.  The caller inspects 'status' and
-        acts accordingly.
-        """
-        # ── Layer 1: Reason ──────────────────────────
-        llm_output = await self._reasoner.reason(context)
-        await self._audit.record(
-            EventType.REASON,
-            {"output_keys": list(llm_output.keys())},
-            actor=context.user_id,
-        )
-
-        # ── Layer 2: Validate ────────────────────────
-        results = await self._constraint.validate(
-            llm_output,
-            role=context.role,
-            posture=context.posture,
-            intent_profile=llm_output.get("intent_profile"),
-        )
-        await self._audit.record(
-            EventType.VALIDATE,
-            {"results": [asdict(r) for r in results]},
-            actor=context.user_id,
-        )
-
-        # Extract domain-specific actions.  Kylin uses "commands";
-        # Malio would use "core_actions" or iterate differently.
-        commands: List[Dict[str, Any]] = llm_output.get("commands", [])
-
-        # Pair each command with its validation result.
-        # Length mismatch means one layer changed the action list
-        # without the other knowing — a constraint boundary violation.
-        if len(commands) != len(results):
-            raise ConstraintError(
-                f"Layer 2 result count ({len(results)}) does not match "
-                f"Layer 1 command count ({len(commands)}). "
-                f"Each command must have exactly one validation result."
-            )
-        pairs: List[Tuple[Dict[str, Any], ValidationResult]] = list(
-            zip(commands, results)
-        )
-
-        # Check for hard veto
-        for cmd, r in pairs:
-            if not r.allowed:
-                await self._audit.record(
-                    EventType.CHAIN_CLOSE,
-                    {"reason": r.reason, "vetoed": True, "command": cmd},
-                    actor=context.user_id,
-                )
-                return {
-                    "status": "vetoed",
-                    "reason": r.reason,
-                    "alternative": r.alternative,
-                }
-
-        # Check for confirmation required
-        needs_confirm = [
-            {"command": cmd, **asdict(r)}
-            for cmd, r in pairs
-            if r.requires_confirmation
-        ]
-        if needs_confirm:
-            return {
-                "status": "confirmation_required",
-                "pending": needs_confirm,
-            }
-
-        # ── Layer 3: Execute ─────────────────────────
-        executed: List[Dict[str, Any]] = []
-        for cmd, r in pairs:
-            resolved, tier = self._executor.resolve_command(cmd)
-            result = await self._executor.execute(resolved, tier=tier)
-            await self._audit.record(
-                EventType.EXECUTE,
-                {
-                    "command": resolved,
-                    "tier": tier.value,
-                    "exit_code": result.exit_code,
-                },
-                actor=context.user_id,
-            )
-            executed.append(asdict(result))
-
-        # ── Layer 4: Close ───────────────────────────
-        await self._audit.record(
-            EventType.CHAIN_CLOSE,
-            {"status": "completed"},
-            actor=context.user_id,
-        )
-
-        return {"status": "completed", "executed": executed}
-
-
 # ═══════════════════════════════════════════════════════════════════
 # Self-check — validates this skeleton is internally consistent
 # ═══════════════════════════════════════════════════════════════════
 
 def _self_check() -> None:
-    """Smoke check: abstractness, frozen, bounds, exceptions, pipeline
-    end-to-end with mock layers."""
-    import asyncio
+    """Verify: ABCs are abstract, data classes are correct, exceptions
+    carry documented attributes, and enums have expected cardinalities.
+    No domain-specific wiring — this is a pure interface check."""
     import sys
 
     ok = 0
@@ -1467,6 +1341,13 @@ def _self_check() -> None:
     except Exception:
         check("ToolDefinition frozen", True)
 
+    # ── AuditEvent prev_hash is required (no default) ──
+    try:
+        AuditEvent(event_type=EventType.REASON, actor="t", timestamp="2026-01-01T00:00:00")
+        check("AuditEvent prev_hash required", False, "Accepted without prev_hash")
+    except TypeError:
+        check("AuditEvent prev_hash required", True)
+
     # ── MemoryLevel has 3 values ──
     check("MemoryLevel count = 3", len(MemoryLevel) == 3)
 
@@ -1479,88 +1360,6 @@ def _self_check() -> None:
     # ── Tier has 3 values ──
     check("Tier count = 3", len(Tier) == 3)
 
-    # ── Pipeline rejects None ──
-    try:
-        ConstraintPipeline(None, None, None, None)  # type: ignore[arg-type]
-        check("Pipeline rejects None", False)
-    except TypeError:
-        check("Pipeline rejects None", True)
-
-    # ── Pipeline end-to-end with mock layers ──
-    class MockReasoner(ReasoningLayer):
-        async def reason(self, context):
-            return {
-                "commands": [
-                    {"tool": "ps_processes", "params": {"limit": "5"}},
-                    {"tool": "systemctl_restart", "params": {"service": "nginx"}},
-                ],
-                "intent_profile": {"risk_hint": "normal"},
-            }
-
-    class MockExecutor(ExecutionProxy):
-        async def execute(self, command, *, tier=Tier.AUTO):
-            return ExecutionResult(0, "ok", "", tier)
-        def resolve_command(self, tool_call):
-            return (tool_call["tool"], Tier.AUTO)
-
-    class MockAudit(AuditTrail):
-        async def record(self, event_type, data, *, actor=""):
-            return AuditEvent(event_type, actor, "", data, "mock_hash", "")
-        def verify_chain(self):
-            return {"valid": True, "events_checked": 0}
-
-    async def run_with(mock_constraint, expected_status, label):
-        pipe = ConstraintPipeline(
-            MockReasoner(), mock_constraint, MockExecutor(), MockAudit()
-        )
-        ctx = PipelineContext(user_input="test", user_id="tester", role="operator")
-        return await pipe.run(ctx), label, expected_status
-
-    # ── E2E: confirmation_required ──
-    class MockConfirm(ConstraintEngine):
-        async def validate(self, llm_output, *, role="operator",
-                           posture="balanced", intent_profile=None):
-            return [
-                ValidationResult(allowed=True, risk_score=1),
-                ValidationResult(allowed=True, requires_confirmation=True, risk_score=6),
-            ]
-
-    # ── E2E: completed (all auto) ──
-    class MockAllAuto(ConstraintEngine):
-        async def validate(self, llm_output, *, role="operator",
-                           posture="balanced", intent_profile=None):
-            return [
-                ValidationResult(allowed=True, risk_score=1),
-                ValidationResult(allowed=True, risk_score=2),
-            ]
-
-    # ── E2E: vetoed ──
-    class MockVeto(ConstraintEngine):
-        async def validate(self, llm_output, *, role="operator",
-                           posture="balanced", intent_profile=None):
-            return [
-                ValidationResult(allowed=True, risk_score=1),
-                ValidationResult(allowed=False, reason="rm is vetoed", alternative="use trash"),
-            ]
-
-    async def run_all():
-        results = await asyncio.gather(
-            run_with(MockConfirm(), "confirmation_required", "confirm"),
-            run_with(MockAllAuto(), "completed", "completed"),
-            run_with(MockVeto(), "vetoed", "veto"),
-        )
-        return results
-
-    all_results = asyncio.run(run_all())
-    for result, label, expected in all_results:
-        check(f"Pipeline E2E {label}", result["status"] == expected,
-              f"expected {expected}, got {result.get('status')}")
-        # Completed path must actually execute — not just return an empty status
-        if expected == "completed":
-            check(f"Pipeline E2E {label} executed count",
-                  len(result.get("executed", [])) == 2,
-                  f"expected 2 executed, got {len(result.get('executed', []))}")
-
     # ── Summary ──
     total = ok + fail
     print(f"Agent OS skeleton v{__version__}")
@@ -1571,9 +1370,8 @@ def _self_check() -> None:
     print(f"  Memory:    1 ABC + 1 Protocol")
     print(f"  Protocol:  1 ABC + 1 Protocol")
     print(f"  Tools:     1 ABC + 1 Protocol")
-    print(f"  Constraint: {4} ABCs (async) + {4} Protocols (duck-typing)")
-    print(f"  Data:      {12} (10 frozen + 2 mutable dataclasses)")
-    print(f"  Pipeline:  1  (example — Kylin-style commands wiring)")
+    print(f"  Constraint: {4} ABCs + {4} Protocols")
+    print(f"  Data:      {12} (10 frozen + 2 mutable)")
     print(f"  Ref implementations:")
     print(f"    Kylin-Agent — github.com/1nour2567/kylin-agent")
     print(f"    Malio       — github.com/1nour2567/Malio")
