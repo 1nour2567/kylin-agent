@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+.env
+*.log
+data/
+/tmp/kylin-agent/
+.vscode/
+.idea/
+*.swp
+Thumbs.db
+.DS_Store

@@ -1,0 +1,638 @@
+# ═══════════════════════════════════════════════════════════════
+# Kylin Agent — Perception Collection Rules (Industrial Grade)
+# ═══════════════════════════════════════════════════════════════
+# Format: YAML-driven declarative rules for OS data collection.
+# Supports custom rule injection without code changes.
+# Compatible with OpenTelemetry Collector-style configuration.
+# ═══════════════════════════════════════════════════════════════
+
+version: "2.1"
+agent_name: kylin-os-agent
+target_arch: loongarch64
+target_os: kylin-linux-advanced-server-v11
+
+# ── Collection Sources ──
+sources:
+
+  # ── Process Monitoring ──
+  processes:
+    enabled: true
+    interval_seconds: 30
+    collectors:
+      - name: proc_stat
+        command: "ps aux --sort=-%cpu"
+        parser: ps_aux_table
+        output: ProcessSnapshot
+      - name: proc_zombie_scan
+        command: "ps aux | awk '$8 ~ /Z/ {print $0}'"
+        parser: ps_aux_table
+        anomaly_on_match: "僵尸进程检测到"
+        anomaly_severity: warn
+      - name: proc_top_mem
+        command: "ps aux --sort=-%mem | head -11"
+        parser: ps_aux_table
+        output: ProcessSnapshot.top_by_memory
+
+  # ── Service Status ──
+  services:
+    enabled: true
+    interval_seconds: 60
+    collectors:
+      - name: systemctl_list
+        command: "systemctl list-units --type=service --all --no-legend"
+        parser: systemctl_table
+        output: ServiceSnapshot
+      - name: failed_services
+        command: "systemctl --failed --no-legend"
+        parser: systemctl_table
+        anomaly_on_match: "存在失败服务"
+        anomaly_severity: critical
+
+  # ── Disk Usage ──
+  disks:
+    enabled: true
+    interval_seconds: 120
+    collectors:
+      - name: df_disk
+        command: "df -h --type=ext4 --type=xfs --type=btrfs"
+        parser: df_table
+        output: DiskSnapshot
+      - name: large_file_scan
+        command: "find /var/log /tmp /var/tmp /home -type f -size +100M -printf '%s %p %u %g %M %Ax %Cx\n' 2>/dev/null"
+        parser: find_table
+        output: FileInventorySnapshot.large_files
+        timeout_seconds: 10
+      - name: temp_file_scan
+        command: "find /tmp /var/tmp -type f -mtime +7 -printf '%s %p %u %g %M %Ax %Cx\n' 2>/dev/null"
+        parser: find_table
+        output: FileInventorySnapshot.temp_files
+        timeout_seconds: 5
+
+  # ── Memory ──
+  memory:
+    enabled: true
+    interval_seconds: 60
+    collectors:
+      - name: free_mem
+        command: "free -h"
+        parser: free_table
+        output: MemorySnapshot
+
+  # ── Network ──
+  network:
+    enabled: true
+    interval_seconds: 60
+    collectors:
+      - name: netstat_conn
+        command: "ss -tulnp"
+        parser: ss_table
+        output: NetworkSnapshot
+      - name: conn_count
+        command: "ss -s"
+        parser: ss_summary
+        output: NetworkSnapshot
+
+  # ── System Logs ──
+  logs:
+    enabled: true
+    interval_seconds: 300
+    collectors:
+      - name: journalctl_errors
+        command: "journalctl -p err -n 50 --no-pager"
+        parser: journalctl_json
+        output: LogSnapshot
+      - name: journalctl_warnings
+        command: "journalctl -p warning -n 30 --no-pager"
+        parser: journalctl_json
+        output: LogSnapshot
+
+  # ── Open Files ──
+  files:
+    enabled: true
+    interval_seconds: 120
+    collectors:
+      - name: lsof_summary
+        command: "lsof -n 2>/dev/null | awk '{print $1, $2, $5, $NF}' | sort | uniq -c | sort -rn | head -30"
+        parser: lsof_summary
+        output: FileInventorySnapshot
+
+# ── Anomaly Detection Rules (Level 2: predefined patterns) ──
+anomaly_rules:
+  # ═══════════════════════════════════════════
+  # Process Anomalies
+  # ═══════════════════════════════════════════
+  - name: zombie_process_buildup
+    description: "僵尸进程堆积（>5个），需检查父进程"
+    condition:
+      field: processes.zombie_count
+      operator: ">"
+      value: 5
+    severity: warn
+    suggestion: "检查僵尸进程的父进程，可能需要重启父进程或清理"
+
+  - name: cpu_overload
+    description: "CPU 持续高负载"
+    condition:
+      field: processes.top_by_cpu[0].cpu_percent
+      operator: ">"
+      value: 90
+    severity: critical
+    suggestion: "检查高CPU进程是否为预期负载，考虑限制资源或扩容"
+
+  # Memory anomalies
+  - name: memory_exhaustion
+    description: "内存使用率超过 95%"
+    condition:
+      field: memory.memory.use_percent
+      operator: ">"
+      value: 95
+    severity: critical
+    suggestion: "检查内存占用最大的进程，清理缓存，考虑增加内存"
+
+  - name: swap_thrashing
+    description: "SWAP 使用超过 50%，可能存在内存泄漏"
+    condition:
+      field: memory.memory.swap_used_gb / memory.memory.total_gb
+      operator: ">"
+      value: 0.5
+    severity: warn
+    suggestion: "检查是否有进程在大量使用 SWAP，可能导致性能急剧下降"
+
+  # Disk anomalies
+  - name: disk_full
+    description: "磁盘使用率超过 90%"
+    condition:
+      field: disks.volumes[*].use_percent
+      operator: ">"
+      value: 90
+    severity: critical
+    suggestion: "检查大文件和过期日志，使用 logrotate 轮转，清理临时文件"
+
+  - name: inode_exhaustion
+    description: "磁盘 inode 使用超过 85%（小文件过多）"
+    condition:
+      field: disks.volumes[*].use_percent
+      operator: ">"
+      value: 85
+    severity: warn
+    suggestion: "检查是否有大量小文件堆积（如邮件队列、缓存文件）"
+
+  # Service anomalies
+  - name: critical_service_down
+    description: "关键服务（nginx/sshd/mysqld）未运行"
+    condition:
+      field: services.services[name in (nginx,sshd,mysqld,postgresql)].state
+      operator: "!="
+      value: active
+    severity: critical
+    suggestion: "立即检查服务日志，尝试重启服务"
+
+  # Network anomalies
+  - name: port_flood
+    description: "TIME_WAIT 连接超过 1000，可能存在短连接攻击"
+    condition:
+      field: network.time_wait_count
+      operator: ">"
+      value: 1000
+    severity: warn
+    suggestion: "检查是否有大量短连接，考虑调整内核参数 net.ipv4.tcp_tw_reuse"
+
+  - name: listen_port_change
+    description: "监听端口发生变化"
+    condition:
+      field: network.listening_ports
+      operator: "changed"
+      value: baseline
+    severity: warn
+    suggestion: "检查是否有新服务启动或端口被占用，验证是否为预期变更"
+
+  # Log anomalies
+  - name: error_log_spike
+    description: "错误日志数量超过基线 3σ"
+    condition:
+      field: logs.error_count
+      operator: ">"
+      value: "baseline + 3σ"
+    severity: warn
+    suggestion: "检查最近的错误日志，定位根因"
+
+  # File anomalies
+  - name: large_temp_files
+    description: "/tmp 或 /var/tmp 下存在超过 1GB 的临时文件"
+    condition:
+      field: files.temp_files[size > 1GB]
+      operator: "exists"
+      value: "any"
+    severity: warn
+    suggestion: "检查临时文件是否仍在使用，过期可安全清理"
+
+
+  - name: defunct_process_chain
+    description: "检测到僵尸进程的父进程为init/systemd，可能无法自动回收"
+    condition:
+      field: processes.zombie_count
+      operator: ">"
+      value: 1
+    severity: critical
+    suggestion: "僵尸进程已被init接管，需重启相关服务或系统"
+
+  - name: process_count_explosion
+    description: "进程总数超过历史基线3倍，可能存在fork炸弹或进程泄漏"
+    condition:
+      field: processes.total_count
+      operator: ">"
+      value: 500
+    severity: critical
+    suggestion: "检查是否有进程在疯狂fork，使用ps查看进程树，必要时限制用户进程数"
+
+  - name: high_cpu_single_core
+    description: "单进程CPU占用超过95%，可能是死循环或计算密集型任务失控"
+    condition:
+      field: processes.top_by_cpu[0].cpu_percent
+      operator: ">"
+      value: 95
+    severity: critical
+    suggestion: "检查该进程是否为预期任务，考虑nice/renice降级或kill"
+
+  - name: process_state_D_count
+    description: "不可中断睡眠（D状态）进程数量异常"
+    condition:
+      field: processes.top_by_cpu[0].state
+      operator: "=="
+      value: D
+    severity: warn
+    suggestion: "D状态进程通常在等待I/O，检查磁盘是否响应缓慢或已故障"
+
+  # ═══════════════════════════════════════════
+  # Memory Anomalies
+  # ═══════════════════════════════════════════
+  - name: memory_exhaustion
+    description: "内存使用率超过 95%"
+    condition:
+      field: memory.memory.use_percent
+      operator: ">"
+      value: 95
+    severity: critical
+    suggestion: "检查内存占用最大的进程，清理缓存，考虑增加内存"
+
+  - name: memory_moderate_pressure
+    description: "内存使用率超过 85%，系统接近高负载状态"
+    condition:
+      field: memory.memory.use_percent
+      operator: ">"
+      value: 85
+    severity: warn
+    suggestion: "检查是否有内存泄漏进程，清理页面缓存，关注内存增长趋势"
+
+  - name: swap_thrashing
+    description: "SWAP 使用超过 30%，可能存在内存泄漏或配置不当"
+    condition:
+      field: memory.memory.swap_used_gb / memory.memory.total_gb
+      operator: ">"
+      value: 0.3
+    severity: warn
+    suggestion: "SWAP使用过高会导致严重性能问题，检查内存大户进程，考虑降低swappiness"
+
+  - name: swap_severe
+    description: "SWAP 使用超过 70%，系统可能已经严重卡顿"
+    condition:
+      field: memory.memory.swap_used_gb / memory.memory.total_gb
+      operator: ">"
+      value: 0.7
+    severity: critical
+    suggestion: "立即检查并释放内存，终止非关键进程，SWAP严重饱和"
+
+  - name: available_memory_low
+    description: "可用内存低于 500MB"
+    condition:
+      field: memory.memory.available_gb
+      operator: "<"
+      value: 0.5
+    severity: critical
+    suggestion: "可用内存不足500MB，立即清理缓存或增加内存"
+
+  - name: buffer_cache_ratio_low
+    description: "Buffer/Cache 占比过低（<5%），系统缓存不足可能导致I/O性能下降"
+    condition:
+      field: memory.memory.use_percent
+      operator: ">"
+      value: 92
+    severity: warn
+    suggestion: "检查是否有进程直接绕过缓存大量写盘"
+
+  # ═══════════════════════════════════════════
+  # Disk Anomalies
+  # ═══════════════════════════════════════════
+  - name: disk_full_critical
+    description: "磁盘使用率超过 95%，立即处理"
+    condition:
+      field: disks.volumes[*].use_percent
+      operator: ">"
+      value: 95
+    severity: critical
+    suggestion: "磁盘即将写满，立即清理大文件和过期日志，检查是否有异常写入"
+
+  - name: disk_full_warning
+    description: "磁盘使用率超过 85%，需关注"
+    condition:
+      field: disks.volumes[*].use_percent
+      operator: ">"
+      value: 85
+    severity: warn
+    suggestion: "磁盘使用率偏高，建议提前清理或扩容"
+
+  - name: root_partition_full
+    description: "根分区使用率超过 80%"
+    condition:
+      field: disks.volumes[mount_point == "/"].use_percent
+      operator: ">"
+      value: 80
+    severity: warn
+    suggestion: "根分区空间有限，检查/var/log和/tmp目录"
+
+  - name: var_partition_full
+    description: "/var 分区使用率超过 85%，日志可能写满"
+    condition:
+      field: disks.volumes[mount_point == "/var"].use_percent
+      operator: ">"
+      value: 85
+    severity: warn
+    suggestion: "检查/var/log日志大小，启用logrotate，清理journal日志"
+
+  - name: disk_available_low
+    description: "磁盘可用空间低于 5GB"
+    condition:
+      field: disks.volumes[*].available_gb
+      operator: "<"
+      value: 5
+    severity: critical
+    suggestion: "可用空间不足5GB，立即清理或扩容"
+
+  - name: read_only_filesystem
+    description: "检测到文件系统以只读模式挂载（可能磁盘故障）"
+    condition:
+      field: disks.volumes[*].filesystem
+      operator: "=="
+      value: "ro"
+    severity: critical
+    suggestion: "文件系统已只读挂载，立即检查磁盘硬件状态（dmesg），备份数据"
+
+  # ═══════════════════════════════════════════
+  # Service Anomalies
+  # ═══════════════════════════════════════════
+  - name: critical_service_down
+    description: "关键服务（nginx/sshd/mysqld）未运行"
+    condition:
+      field: services.services[name in (nginx,sshd,mysqld,postgresql)].state
+      operator: "!="
+      value: active
+    severity: critical
+    suggestion: "关键服务停止，立即检查服务日志，尝试重启"
+
+  - name: multiple_services_failed
+    description: "多个服务（>=3）处于失败状态"
+    condition:
+      field: services.failed_count
+      operator: ">="
+      value: 3
+    severity: critical
+    suggestion: "多个服务同时失败可能是系统级问题，检查系统日志和资源状态"
+
+  - name: newly_failed_service
+    description: "检测到新失败的服务"
+    condition:
+      field: services.failed_count
+      operator: ">"
+      value: 0
+    severity: warn
+    suggestion: "有服务启动失败，使用systemctl status查看详情"
+
+  - name: service_not_enabled
+    description: "关键服务未设置开机自启"
+    condition:
+      field: services.services[name in (sshd,chronyd,firewalld)].enabled
+      operator: "=="
+      value: false
+    severity: warn
+    suggestion: "关键服务未开机自启，重启后可能无法自动恢复"
+
+  # ═══════════════════════════════════════════
+  # Network Anomalies
+  # ═══════════════════════════════════════════
+  - name: port_flood_timewait
+    description: "TIME_WAIT 连接超过 2000，可能存在短连接攻击或配置不当"
+    condition:
+      field: network.time_wait_count
+      operator: ">"
+      value: 2000
+    severity: warn
+    suggestion: "TIME_WAIT连接过多，考虑启用tcp_tw_reuse和调整tcp_tw_recycle"
+
+  - name: established_connection_spike
+    description: "ESTABLISHED 连接超过 5000"
+    condition:
+      field: network.established_count
+      operator: ">"
+      value: 5000
+    severity: warn
+    suggestion: "大量活动连接，检查是否有DDoS攻击或应用连接泄漏"
+
+  - name: suspicious_listen_port
+    description: "检测到非标准端口在监听（>10000）"
+    condition:
+      field: network.listening_ports
+      operator: "changed"
+      value: baseline
+    severity: warn
+    suggestion: "发现新监听端口，确认是否为合法服务"
+
+  - name: connection_track_table_full
+    description: "连接跟踪表可能已满（TIME_WAIT + ESTABLISHED > 10000）"
+    condition:
+      field: network.established_count + network.time_wait_count
+      operator: ">"
+      value: 10000
+    severity: critical
+    suggestion: "连接跟踪表接近满载，新连接可能被拒绝，立即排查"
+
+  - name: zero_listening_ports
+    description: "未检测到任何监听端口（可能网络服务全部异常）"
+    condition:
+      field: network.listening_ports
+      operator: "=="
+      value: []
+    severity: critical
+    suggestion: "无监听端口，检查网络服务和防火墙状态"
+
+  # ═══════════════════════════════════════════
+  # Log Anomalies
+  # ═══════════════════════════════════════════
+  - name: error_log_spike
+    description: "错误日志数量激增（>20条/采集周期）"
+    condition:
+      field: logs.error_count
+      operator: ">"
+      value: 20
+    severity: warn
+    suggestion: "错误日志激增，检查最近的系统日志定位根因"
+
+  - name: critical_log_present
+    description: "检测到 CRIT 级别的系统日志"
+    condition:
+      field: logs.error_count
+      operator: ">"
+      value: 0
+    severity: critical
+    suggestion: "存在严重级别日志，立即检查journalctl -p crit"
+
+  - name: kernel_oops_detected
+    description: "检测到内核 Oops 或 BUG 日志"
+    condition:
+      field: logs.entries[priority == crit].count
+      operator: ">"
+      value: 0
+    severity: critical
+    suggestion: "内核发生Oops，可能存在硬件故障或驱动bug，收集crash信息"
+
+  # ═══════════════════════════════════════════
+  # File System Anomalies
+  # ═══════════════════════════════════════════
+  - name: large_temp_files
+    description: "/tmp 或 /var/tmp 下存在超过 1GB 的孤立大文件"
+    condition:
+      field: files.temp_files[size > 1073741824]
+      operator: exists
+      value: any
+    severity: warn
+    suggestion: "检查临时文件是否仍在使用，过期可安全清理释放空间"
+
+  - name: excessive_log_files
+    description: "日志目录存在超过50个日志文件，可能logrotate配置不当"
+    condition:
+      field: files.log_files
+      operator: exists
+      value: any
+    severity: warn
+    suggestion: "检查logrotate配置，清理过期轮转日志"
+
+  - name: core_dump_detected
+    description: "检测到核心转储文件，有进程崩溃"
+    condition:
+      field: files.large_files[path contains core]
+      operator: exists
+      value: any
+    severity: warn
+    suggestion: "有进程崩溃生成core dump，分析崩溃原因后清理文件"
+
+  # ═══════════════════════════════════════════
+  # System Health Composite
+  # ═══════════════════════════════════════════
+  - name: multi_factor_crisis
+    description: "多系统指标同时告警——内存高 AND 磁盘满 AND 服务失败"
+    condition:
+      field: memory.memory.use_percent
+      operator: ">"
+      value: 90
+    severity: critical
+    suggestion: "系统处于多重压力下，建议逐项排查并按优先级处理：先保磁盘空间 -> 释放内存 -> 恢复服务"
+
+# ── Knowledge Association Rules ──
+knowledge_association:
+  enabled: true
+  rules:
+    # Error code → fault description → solution
+    - error_pattern: "Out of memory|OOM killer|oom_reaper"
+      fault_type: "内存不足"
+      root_cause: "系统物理内存耗尽，OOM Killer 已介入"
+      solution: "检查内存占用最大的进程，增加物理内存或启用 SWAP，调整 OOM 评分"
+      severity: critical
+      tags: ["memory", "crash"]
+
+    - error_pattern: "segfault|SIGSEGV|segmentation fault"
+      fault_type: "段错误"
+      root_cause: "进程访问了无效内存地址（空指针、缓冲区溢出、栈溢出）"
+      solution: "检查 core dump 文件定位崩溃位置，更新或回滚软件版本"
+      severity: critical
+      tags: ["crash", "debug"]
+
+    - error_pattern: "Connection refused|ECONNREFUSED"
+      fault_type: "连接被拒绝"
+      root_cause: "目标端口未监听或服务未启动"
+      solution: "检查目标服务状态（systemctl status），验证端口监听（ss -tlnp），检查防火墙规则"
+      severity: warn
+      tags: ["network", "service"]
+
+    - error_pattern: "Connection timed out|ETIMEDOUT"
+      fault_type: "连接超时"
+      root_cause: "网络不可达、防火墙拦截或服务响应过慢"
+      solution: "检查网络连通性（ping/traceroute），检查防火墙规则，确认服务是否过载"
+      severity: warn
+      tags: ["network", "latency"]
+
+    - error_pattern: "Disk full|No space left|ENOSPC"
+      fault_type: "磁盘空间不足"
+      root_cause: "磁盘分区达到容量上限或 inode 耗尽"
+      solution: "检查大文件（find -size +100M），清理过期日志（journalctl --vacuum），使用 logrotate"
+      severity: critical
+      tags: ["disk", "cleanup"]
+
+    - error_pattern: "Permission denied|EACCES"
+      fault_type: "权限不足"
+      root_cause: "进程以受限用户运行，无权访问目标文件或端口"
+      solution: "检查文件权限（ls -la），验证进程运行用户，必要时调整权限或使用 sudo"
+      severity: warn
+      tags: ["security", "permissions"]
+
+    - error_pattern: "too many open files|EMFILE|ENFILE"
+      fault_type: "文件描述符耗尽"
+      root_cause: "进程打开的文件描述符超过系统或用户限制"
+      solution: "检查当前限制（ulimit -n），增加限制，检查是否有文件描述符泄漏"
+      severity: critical
+      tags: ["resource", "leak"]
+
+    - error_pattern: "Tainted|kernel BUG|kernel panic"
+      fault_type: "内核异常"
+      root_cause: "内核检测到不可恢复的错误或模块污染"
+      solution: "收集 crash dump，检查硬件（内存/磁盘），检查最近加载的内核模块"
+      severity: critical
+      tags: ["kernel", "crash"]
+
+    - error_pattern: "zombie|defunct"
+      fault_type: "僵尸进程"
+      root_cause: "子进程已退出但父进程未调用 wait() 回收"
+      solution: "找到僵尸进程的父进程，重启父进程使其回收子进程"
+      severity: warn
+      tags: ["process", "bug"]
+
+    - error_pattern: "journal.*corrupt|systemd-journald.*Failed"
+      fault_type: "系统日志损坏"
+      root_cause: "Journal 文件因异常关机或磁盘错误损坏"
+      solution: "使用 journalctl --verify 检查，必要时用 journalctl --vacuum 清理"
+      severity: warn
+      tags: ["logs", "disk"]
+
+    - error_pattern: "swap.*fail|Cannot allocate memory.*swap"
+      fault_type: "SWAP 分配失败"
+      root_cause: "系统内存和 SWAP 均已耗尽"
+      solution: "立即释放内存（停止非关键服务），增加物理内存或 SWAP 空间"
+      severity: critical
+      tags: ["memory", "crash"]
+
+    - error_pattern: "sshd.*authentication failure|Failed password"
+      fault_type: "SSH 认证失败"
+      root_cause: "SSH 登录凭证错误或暴力破解尝试"
+      solution: "检查是否正常登录还是攻击，考虑启用 fail2ban 限制尝试次数"
+      severity: warn
+      tags: ["security", "ssh"]
+
+# ── Retention & Export ──
+export:
+  prometheus:
+    enabled: false
+    push_gateway: ""
+  opentelemetry:
+    enabled: false
+    endpoint: ""
+  internal:
+    enabled: true
+    max_history_hours: 24

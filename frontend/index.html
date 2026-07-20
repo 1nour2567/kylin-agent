@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="light dark">
+  <title>麒麟盾智能运维工作台</title>
+  <link rel="stylesheet" href="/src/styles.css">
+</head>
+<body data-theme="kylin-fresh" data-density="comfortable">
+  <svg class="svg-sprite" aria-hidden="true">
+    <symbol id="i-dashboard" viewBox="0 0 24 24"><path d="M4 13h6V4H4v9Zm0 7h6v-5H4v5Zm10 0h6v-9h-6v9Zm0-16v5h6V4h-6Z"/></symbol>
+    <symbol id="i-agent" viewBox="0 0 24 24"><path d="M9 3h6v2h2.5A3.5 3.5 0 0 1 21 8.5v8a3.5 3.5 0 0 1-3.5 3.5h-11A3.5 3.5 0 0 1 3 16.5v-8A3.5 3.5 0 0 1 6.5 5H9V3Zm-2.5 4A1.5 1.5 0 0 0 5 8.5v8A1.5 1.5 0 0 0 6.5 18h11a1.5 1.5 0 0 0 1.5-1.5v-8A1.5 1.5 0 0 0 17.5 7h-11ZM8 10.5a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3Zm8 0a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM8 15h8v1.5H8V15Z"/></symbol>
+    <symbol id="i-audit" viewBox="0 0 24 24"><path d="M6 2h9l5 5v14a1 1 0 0 1-1 1H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2Zm8 2H6v16h12V8h-4V4Zm-5 7h6v2H9v-2Zm0 4h6v2H9v-2Z"/></symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24"><path d="m14.8 2 .5 2.1c.5.2.9.4 1.3.7l2-.6 2 3.4-1.5 1.5c.1.5.1 1 0 1.5l1.5 1.5-2 3.4-2-.6c-.4.3-.8.5-1.3.7l-.5 2.1h-4l-.5-2.1c-.5-.2-.9-.4-1.3-.7l-2 .6-2-3.4 1.5-1.5a6 6 0 0 1 0-1.5L5 7.6l2-3.4 2 .6c.4-.3.8-.5 1.3-.7l.5-2.1h4ZM12.8 6a4 4 0 1 0 0 8 4 4 0 0 0 0-8Zm0 2a2 2 0 1 1 0 4 2 2 0 0 1 0-4Z"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><path d="M10.5 3a7.5 7.5 0 1 1 0 15 7.5 7.5 0 0 1 0-15Zm0 2a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11Zm6.9 10.9 4 4-1.5 1.5-4-4 1.5-1.5Z"/></symbol>
+    <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m8.6 4.6 7.4 7.4-7.4 7.4L10 20.8l8.8-8.8L10 3.2 8.6 4.6Z"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M18.6 5.4A9 9 0 1 0 21 12h-2a7 7 0 1 1-2-4.9L14 10h7V3l-2.4 2.4Z"/></symbol>
+    <symbol id="i-terminal" viewBox="0 0 24 24"><path d="M3 4h18v16H3V4Zm2 2v12h14V6H5Zm2 2 4 4-4 4-1.4-1.4 2.6-2.6-2.6-2.6L7 8Zm5 6h5v2h-5v-2Z"/></symbol>
+    <symbol id="i-eye" viewBox="0 0 24 24"><path d="M12 5c5.5 0 9.5 5.2 9.5 7s-4 7-9.5 7S2.5 13.8 2.5 12 6.5 5 12 5Zm0 2c-4 0-7 3.6-7.4 5 .4 1.4 3.4 5 7.4 5s7-3.6 7.4-5C19 10.6 16 7 12 7Zm0 2.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5Z"/></symbol>
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M3 5h18v2H3V5Zm0 6h18v2H3v-2Zm0 6h18v2H3v-2Z"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="m5.6 4.2 6.4 6.4 6.4-6.4 1.4 1.4-6.4 6.4 6.4 6.4-1.4 1.4-6.4-6.4-6.4 6.4-1.4-1.4 6.4-6.4-6.4-6.4 1.4-1.4Z"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24"><path d="M11 10h2v8h-2v-8Zm0-4h2v2h-2V6Zm1-4a10 10 0 1 1 0 20 10 10 0 0 1 0-20Zm0 2a8 8 0 1 0 0 16 8 8 0 0 0 0-16Z"/></symbol>
+    <symbol id="i-grip" viewBox="0 0 24 24"><path d="M8 5h2v2H8V5Zm6 0h2v2h-2V5ZM8 11h2v2H8v-2Zm6 0h2v2h-2v-2ZM8 17h2v2H8v-2Zm6 0h2v2h-2v-2Z"/></symbol>
+  </svg>
+
+  <header class="topbar">
+    <a class="brand" href="#overview" data-nav="overview" aria-label="前往运行总览">
+      <span class="brand-mark" aria-hidden="true"><span></span></span>
+      <span class="brand-copy"><strong>麒麟盾</strong><small>安全智能运维工作台</small></span>
+    </a>
+    <span class="environment-badge" id="environment-badge">环境读取中</span>
+    <nav class="global-nav" aria-label="全局导航">
+      <button class="nav-item active" type="button" data-nav="overview"><svg><use href="#i-dashboard"/></svg>运行总览</button>
+      <button class="nav-item" type="button" data-nav="operations"><svg><use href="#i-agent"/></svg>智能运维</button>
+      <button class="nav-item" type="button" data-nav="audit"><svg><use href="#i-audit"/></svg>日志审计<span class="nav-count hidden" id="audit-unread">0</span></button>
+    </nav>
+    <div class="global-search">
+      <svg aria-hidden="true"><use href="#i-search"/></svg>
+      <label class="sr-only" for="global-search-input">全局搜索</label>
+      <input id="global-search-input" type="search" placeholder="搜索日志、服务或进程" autocomplete="off">
+    </div>
+    <div class="header-status">
+      <button class="status-chip" type="button" id="posture-chip" data-tooltip="安全态势决定操作进入确认或拦截的阈值">
+        <span class="status-dot neutral" id="dot-posture"></span>
+        <span><small>安全态势</small><strong id="posture-badge">读取中</strong></span>
+      </button>
+      <div class="identity-box" id="identity-box">
+        <span class="avatar" id="identity-avatar">未</span>
+        <span><small>当前身份</small><strong id="identity-display">未登录</strong></span>
+      </div>
+      <button class="icon-button" type="button" id="btn-settings" aria-label="打开设置中心" title="设置中心"><svg><use href="#i-settings"/></svg></button>
+    </div>
+  </header>
+
+  <section class="auth-strip" id="auth-strip" aria-label="身份认证">
+    <div class="auth-message"><strong>使用 API Key 登录</strong><span>密钥只保存在当前页面内存中，不写入浏览器存储。</span></div>
+    <label for="api-key-input">API Key</label>
+    <div class="password-field">
+      <input id="api-key-input" type="password" autocomplete="off" spellcheck="false" aria-describedby="auth-security-note">
+      <button class="input-icon-button" id="btn-key-visibility" type="button" aria-label="短暂显示 API Key"><svg><use href="#i-eye"/></svg></button>
+    </div>
+    <button class="button primary small" type="button" id="btn-login">验证身份</button>
+    <button class="button ghost small hidden" type="button" id="btn-logout">退出当前身份</button>
+    <span id="auth-security-note">生产环境请使用 HTTPS/WSS。</span>
+  </section>
+
+  <div class="connection-banner hidden" id="connection-banner" role="status">
+    <span id="connection-banner-text">实时连接已断开，正在重连。</span>
+    <button class="button ghost small" type="button" id="btn-reconnect">立即重连</button>
+  </div>
+
+  <main class="workspace">
+    <section class="page active" id="page-overview" data-page="overview" aria-labelledby="overview-title">
+      <div class="page-heading">
+        <div><p class="eyebrow">运行总览</p><h1 id="overview-title">当前节点状态</h1><p>资源感知、安全态势、主动巡检与最近告警集中呈现。</p></div>
+        <button class="button secondary" type="button" id="btn-refresh-overview"><svg><use href="#i-refresh"/></svg><span>刷新数据</span></button>
+      </div>
+
+      <div class="overview-grid">
+        <section class="surface resource-summary" aria-labelledby="resource-summary-title">
+          <div class="section-heading"><div><h2 id="resource-summary-title">系统资源摘要</h2><p id="context-update-summary">等待获取系统上下文</p></div><span class="text-badge" id="context-visibility-badge">可见范围未知</span></div>
+          <div class="summary-metrics">
+            <div class="summary-metric"><span class="metric-icon disk">盘</span><div><small>根分区使用率</small><strong id="summary-disk-pct">未知</strong><span id="summary-disk-detail">暂无数据</span></div></div>
+            <div class="summary-metric"><span class="metric-icon memory">存</span><div><small>内存使用</small><strong id="summary-memory-pct">未知</strong><span id="summary-memory-detail">暂无数据</span></div></div>
+            <div class="summary-metric"><span class="metric-icon service">服</span><div><small>已读取服务</small><strong id="summary-service-count">未知</strong><span id="summary-service-detail">登录后可查看完整信息</span></div></div>
+            <div class="summary-metric"><span class="metric-icon process">程</span><div><small>已读取进程</small><strong id="summary-process-count">未知</strong><span id="summary-process-detail">登录后可查看完整信息</span></div></div>
+          </div>
+          <div class="inline-feedback hidden" id="overview-context-error" role="alert"></div>
+        </section>
+
+        <section class="surface posture-card" aria-labelledby="posture-title">
+          <div class="section-heading"><div><h2 id="posture-title">安全态势</h2><p>由后端策略引擎强制执行</p></div><span class="status-label neutral" id="posture-state">读取中</span></div>
+          <dl class="key-values">
+            <div><dt>操作确认阈值 <button class="tooltip-button" data-tooltip="风险分数达到此阈值时需要人工确认" aria-label="说明：操作确认阈值">?</button></dt><dd id="posture-threshold">未知</dd></div>
+            <div><dt>审计记录强度 <button class="tooltip-button" data-tooltip="后端按当前态势决定记录摘要、标准或完整信息" aria-label="说明：审计记录强度">?</button></dt><dd id="posture-audit-level">未知</dd></div>
+            <div><dt>近期拦截次数</dt><dd id="posture-veto-count">未知</dd></div>
+          </dl>
+        </section>
+
+        <section class="surface inspect-card" aria-labelledby="inspect-title">
+          <div class="section-heading"><div><h2 id="inspect-title">主动巡检</h2><p>展示后端最近一次巡检结果</p></div><span class="status-label neutral" id="inspect-state">读取中</span></div>
+          <div id="inspect-content" class="empty-state compact">正在读取主动巡检结果…</div>
+          <button class="button secondary full" type="button" data-quick="执行主动巡检">在智能运维中请求巡检</button>
+        </section>
+
+        <section class="surface alerts-card" aria-labelledby="alerts-title">
+          <div class="section-heading"><div><h2 id="alerts-title">最近告警</h2><p>来自主动巡检与实时通道</p></div><span class="text-badge" id="alert-count">0 条</span></div>
+          <div id="recent-alerts" class="empty-state compact">当前没有可展示的告警</div>
+        </section>
+
+        <section class="surface quick-card" aria-labelledby="quick-title">
+          <div class="section-heading"><div><h2 id="quick-title">快捷运维入口</h2><p>填入自然语言请求，仍经过完整安全护栏</p></div></div>
+          <div class="quick-grid">
+            <button class="quick-action" type="button" data-quick="查看磁盘使用情况"><span>磁盘</span><strong>查看磁盘使用</strong><small>读取分区容量与使用率</small></button>
+            <button class="quick-action" type="button" data-quick="查看内存状态"><span>内存</span><strong>查看内存状态</strong><small>读取总量、已用与可用内存</small></button>
+            <button class="quick-action" type="button" data-quick="查看当前运行服务"><span>服务</span><strong>查看运行服务</strong><small>读取真实服务名称与状态</small></button>
+            <button class="quick-action" type="button" data-quick="查看 CPU 和内存占用较高的进程"><span>进程</span><strong>查看高占用进程</strong><small>按资源占用辅助排查</small></button>
+            <button class="quick-action" type="button" data-quick="查看最近的系统日志"><span>日志</span><strong>查看系统日志</strong><small>由现有运维工具读取日志</small></button>
+            <button class="quick-action" type="button" data-quick="执行主动巡检"><span>巡检</span><strong>执行主动巡检</strong><small>通过聊天进入真实安全链路</small></button>
+          </div>
+        </section>
+      </div>
+    </section>
+
+    <section class="page operations-page" id="page-operations" data-page="operations" aria-label="智能运维">
+      <aside class="resource-sidebar" id="resource-sidebar">
+        <div class="sidebar-head">
+          <div><p class="eyebrow">系统感知</p><h2>节点资源</h2></div>
+          <button class="icon-button" type="button" id="btn-sidebar-collapse" aria-label="折叠资源侧栏"><svg><use href="#i-menu"/></svg></button>
+        </div>
+        <div class="sidebar-icons" aria-label="折叠后的资源导航">
+          <button type="button" data-resource-target="resource-overview" title="系统概览">概</button>
+          <button type="button" data-resource-target="resource-usage" title="资源使用">资</button>
+          <button type="button" data-resource-target="resource-services" title="运行服务">服</button>
+          <button type="button" data-resource-target="resource-processes" title="高占用进程">程</button>
+          <button type="button" data-resource-target="resource-storage" title="文件与存储">盘</button>
+        </div>
+        <div class="resource-scroll" id="resource-sections">
+          <section class="resource-section" id="resource-overview" data-resource-id="overview">
+            <div class="resource-title"><button class="drag-handle" type="button" draggable="true" aria-label="拖动系统概览模块"><svg><use href="#i-grip"/></svg></button><h3>系统概览</h3></div>
+            <dl class="sidebar-kv">
+              <div><dt>实时连接</dt><dd id="sidebar-ws-state">未连接</dd></div>
+              <div><dt>当前角色</dt><dd id="sidebar-role">未登录</dd></div>
+              <div><dt>安全态势</dt><dd id="sidebar-posture">读取中</dd></div>
+              <div><dt>最近更新</dt><dd id="sidebar-updated">尚未更新</dd></div>
+            </dl>
+          </section>
+
+          <section class="resource-section" id="resource-usage" data-resource-id="usage">
+            <div class="resource-title"><button class="drag-handle" type="button" draggable="true" aria-label="拖动资源使用模块"><svg><use href="#i-grip"/></svg></button><h3>资源使用</h3></div>
+            <div id="disk-usage-list" class="resource-list"><div class="empty-state compact">磁盘数据读取中…</div></div>
+            <div id="memory-usage" class="resource-list"><div class="empty-state compact">内存数据读取中…</div></div>
+          </section>
+
+          <section class="resource-section" id="resource-services" data-resource-id="services">
+            <div class="resource-title"><button class="drag-handle" type="button" draggable="true" aria-label="拖动运行服务模块"><svg><use href="#i-grip"/></svg></button><h3>运行服务</h3></div>
+            <label class="compact-select">排序
+              <select id="service-sort"><option value="name">按名称</option><option value="state">按状态</option></select>
+            </label>
+            <div id="service-list" class="resource-list"><div class="empty-state compact">服务数据读取中…</div></div>
+          </section>
+
+          <section class="resource-section" id="resource-processes" data-resource-id="processes">
+            <div class="resource-title"><button class="drag-handle" type="button" draggable="true" aria-label="拖动高占用进程模块"><svg><use href="#i-grip"/></svg></button><h3>高占用进程</h3></div>
+            <label class="compact-select">排序
+              <select id="process-sort"><option value="memory">按内存</option><option value="cpu">按 CPU</option></select>
+            </label>
+            <div id="process-list" class="resource-list"><div class="empty-state compact">进程数据读取中…</div></div>
+            <button class="text-button hidden" type="button" id="btn-more-processes">查看更多</button>
+          </section>
+
+          <section class="resource-section" id="resource-storage" data-resource-id="storage">
+            <div class="resource-title"><button class="drag-handle" type="button" draggable="true" aria-label="拖动文件与存储模块"><svg><use href="#i-grip"/></svg></button><h3>文件与存储</h3></div>
+            <div id="storage-tree" class="storage-tree"><div class="empty-state compact">接口未提供目录树，将仅展示真实分区摘要。</div></div>
+          </section>
+        </div>
+      </aside>
+
+      <div class="operations-main">
+        <section class="request-chain" aria-labelledby="request-chain-title">
+          <div class="chain-heading"><div><p class="eyebrow">当前请求</p><h2 id="request-chain-title">安全处理链路</h2></div><div class="trace-box"><span>追踪编号</span><strong id="trace-id">尚未产生</strong></div></div>
+          <div class="chain-stages" id="chain-stages">
+            <div class="chain-stage idle" data-stage="receive"><span>1</span><div><strong>输入请求</strong><small>接收自然语言任务</small></div><button class="tooltip-button" data-tooltip="接收并记录当前用户输入" aria-label="说明：输入请求">?</button></div>
+            <div class="chain-stage idle" data-stage="perceive"><span>2</span><div><strong>感知环境</strong><small>读取实时系统上下文</small></div><button class="tooltip-button" data-tooltip="从真实操作系统传感器获取资源与状态" aria-label="说明：感知环境">?</button></div>
+            <div class="chain-stage idle" data-stage="reason"><span>3</span><div><strong>推理判断</strong><small>识别意图并形成方案</small></div><button class="tooltip-button" data-tooltip="大模型参与诊断与工具建议，但不决定安全放行" aria-label="说明：推理判断">?</button></div>
+            <div class="chain-stage idle" data-stage="validate"><span>4</span><div><strong>安全校验</strong><small>风险识别与约束校验</small></div><button class="tooltip-button" data-tooltip="确定性规则检查风险、角色、路径和命令参数" aria-label="说明：安全校验">?</button></div>
+            <div class="chain-stage idle" data-stage="execute"><span>5</span><div><strong>确认或执行</strong><small>人工确认或受限执行</small></div><button class="tooltip-button" data-tooltip="高风险操作等待确认，获准后仍需后端再次校验" aria-label="说明：确认或执行">?</button></div>
+            <div class="chain-stage idle" data-stage="result"><span>6</span><div><strong>返回结果</strong><small>输出结果并完成审计</small></div><button class="tooltip-button" data-tooltip="返回经过清理的结果并闭合审计链路" aria-label="说明：返回结果">?</button></div>
+          </div>
+        </section>
+
+        <section class="conversation-shell" aria-labelledby="conversation-title">
+          <div class="conversation-head">
+            <div><p class="eyebrow">自然语言运维</p><h1 id="conversation-title">智能运维对话</h1></div>
+            <div class="conversation-state"><span class="status-dot neutral" id="conversation-dot"></span><span id="conversation-status">等待输入</span></div>
+          </div>
+          <div class="chat-messages" id="chat-messages" aria-live="polite">
+            <article class="message agent">
+              <div class="message-avatar">麒</div>
+              <div class="message-body"><div class="message-meta">麒麟盾 Agent</div><div class="message-content">已连接安全运维工作台。你可以询问系统状态、排查问题或提出运维任务；所有请求都会经过环境感知、安全校验和审计记录。</div></div>
+            </article>
+          </div>
+          <div class="chat-shortcuts" aria-label="快捷请求">
+            <button type="button" data-quick="查看磁盘使用情况">磁盘使用</button>
+            <button type="button" data-quick="查看内存状态">内存状态</button>
+            <button type="button" data-quick="查看当前运行服务">运行服务</button>
+            <button type="button" data-quick="查看 CPU 和内存占用较高的进程">高占用进程</button>
+          </div>
+          <form class="composer" id="chat-form">
+            <label for="chat-input">运维请求</label>
+            <div class="composer-row">
+              <textarea id="chat-input" rows="2" maxlength="12000" placeholder="例如：检查磁盘空间异常的原因" spellcheck="false"></textarea>
+              <button class="button primary send-button" type="submit" id="btn-send"><span>发送请求</span></button>
+            </div>
+            <div class="composer-help"><span>Enter 发送，Shift + Enter 换行</span><span id="input-count">0 / 12000</span></div>
+          </form>
+        </section>
+
+        <section class="terminal-panel" id="terminal-panel" aria-labelledby="terminal-title">
+          <div class="terminal-head">
+            <div><svg><use href="#i-terminal"/></svg><strong id="terminal-title">执行输出</strong><span>仅显示后端返回的命令与 Agent 日志</span></div>
+            <button class="text-button" type="button" id="btn-terminal-toggle" aria-expanded="true">折叠</button>
+          </div>
+          <pre class="terminal-output" id="terminal-output" tabindex="0" aria-label="终端输出">[系统] 麒麟盾安全运维终端已就绪
+[提示] 在上方输入自然语言请求，命令仍由后端安全护栏决定是否执行</pre>
+        </section>
+      </div>
+    </section>
+
+    <section class="page audit-page" id="page-audit" data-page="audit" aria-labelledby="audit-title">
+      <div class="page-heading">
+        <div><p class="eyebrow">日志审计</p><h1 id="audit-title">可追溯操作记录</h1><p>读取真实审计事件并验证 SHA-256 链路完整性。</p></div>
+        <div class="audit-actions">
+          <span class="chain-verify-badge neutral" id="chain-verify-badge"><span class="status-dot neutral" id="dot-chain"></span><span id="chain-status-text">尚未验证</span></span>
+          <button class="button secondary" type="button" id="btn-verify-chain">验证审计链</button>
+        </div>
+      </div>
+
+      <section class="surface audit-surface">
+        <div class="audit-filters">
+          <label>开始日期<input type="date" id="audit-from-date"></label>
+          <label>结束日期<input type="date" id="audit-to-date"></label>
+          <label>事件类型<select id="audit-type-filter"><option value="">全部类型</option></select></label>
+          <label>风险或结果<select id="audit-result-filter"><option value="">全部状态</option><option value="success">成功/通过</option><option value="warning">待确认/警告</option><option value="danger">拦截/失败</option></select></label>
+          <label class="filter-search">关键词<input type="search" id="audit-keyword" placeholder="事件编号、用户或内容"></label>
+          <button class="button primary" type="button" id="btn-load-audit">查询日志</button>
+        </div>
+        <div class="audit-feedback hidden" id="audit-feedback" role="status"></div>
+        <div class="table-scroll">
+          <table class="audit-table">
+            <thead><tr><th>事件时间</th><th>事件类型</th><th>用户标识</th><th>事件编号</th><th>内容摘要</th><th><span class="sr-only">操作</span></th></tr></thead>
+            <tbody id="audit-table-body"><tr><td colspan="6"><div class="empty-state">正在读取审计记录…</div></td></tr></tbody>
+          </table>
+        </div>
+        <div class="table-footer"><span id="audit-count">0 条记录</span><span>当前仅展示后端已提供字段；暂不提供导出。</span></div>
+      </section>
+    </section>
+  </main>
+
+  <div class="drawer-backdrop hidden" id="drawer-backdrop"></div>
+
+  <aside class="drawer settings-drawer" id="settings-drawer" aria-hidden="true" aria-labelledby="settings-title">
+    <div class="drawer-head"><div><p class="eyebrow">统一配置</p><h2 id="settings-title">设置中心</h2></div><button class="icon-button" type="button" data-close-drawer aria-label="关闭设置中心"><svg><use href="#i-close"/></svg></button></div>
+    <div class="drawer-tabs" role="tablist">
+      <button class="active" type="button" role="tab" data-settings-tab="agent" aria-selected="true">智能体设置</button>
+      <button type="button" role="tab" data-settings-tab="appearance" aria-selected="false">外观设置</button>
+      <button type="button" role="tab" data-settings-tab="security" aria-selected="false">安全与账号</button>
+    </div>
+    <div class="drawer-content">
+      <section class="settings-panel active" data-settings-panel="agent">
+        <div class="settings-group">
+          <h3>当前运行信息</h3>
+          <dl class="settings-summary">
+            <div><dt>运行模式</dt><dd id="settings-agent-mode">读取中</dd></div>
+            <div><dt>模型信息</dt><dd>由后端环境变量配置，当前接口不可读取</dd></div>
+          </dl>
+          <p class="settings-note">后端未提供运行时模型配置接口，下列项目仅展示预期结构，不会伪装保存或切换成功。</p>
+        </div>
+        <div class="settings-group disabled-group" aria-disabled="true">
+          <h3>运行时参数</h3>
+          <label>模型选择<input type="text" value="需要后端提供模型列表与切换接口" disabled></label>
+          <label>上下文长度<input type="text" value="后端未提供当前值" disabled></label>
+          <label>请求超时<input type="text" value="后端未提供运行时设置接口" disabled></label>
+          <label>失败重试次数<input type="text" value="后端未提供运行时设置接口" disabled></label>
+          <label class="switch-row"><span><strong>显示推理过程</strong><small>当前接口仅返回说明与安全链路，不公开内部思维过程</small></span><input type="checkbox" disabled></label>
+        </div>
+      </section>
+
+      <section class="settings-panel" data-settings-panel="appearance">
+        <div class="settings-group">
+          <h3>完整主题</h3>
+          <div class="theme-grid" id="theme-grid">
+            <button type="button" class="theme-option active" data-theme-value="kylin-fresh"><span class="theme-preview fresh"></span><strong>麒麟清新</strong><small>浅灰蓝 · 蓝绿色</small></button>
+            <button type="button" class="theme-option" data-theme-value="government-light"><span class="theme-preview gov"></span><strong>政务浅色</strong><small>中性白 · 稳重蓝</small></button>
+            <button type="button" class="theme-option" data-theme-value="warm-eye"><span class="theme-preview warm"></span><strong>护眼暖色</strong><small>米白 · 柔和绿</small></button>
+            <button type="button" class="theme-option" data-theme-value="professional-dark"><span class="theme-preview dark"></span><strong>专业深色</strong><small>深蓝灰 · 青色</small></button>
+            <button type="button" class="theme-option" data-theme-value="high-contrast"><span class="theme-preview contrast"></span><strong>高对比暗色</strong><small>纯黑 · 高可读</small></button>
+          </div>
+        </div>
+        <div class="settings-group">
+          <h3>布局偏好</h3>
+          <label class="switch-row"><span><strong>显示系统资源侧栏</strong><small>折叠后保留窄图标栏</small></span><input type="checkbox" id="setting-sidebar-visible" checked></label>
+          <label>侧边栏宽度 <output id="sidebar-width-output">320px</output><input type="range" id="setting-sidebar-width" min="280" max="440" step="10" value="320"></label>
+          <label>终端高度 <output id="terminal-height-output">180px</output><input type="range" id="setting-terminal-height" min="120" max="360" step="10" value="180"></label>
+          <label class="switch-row"><span><strong>默认展开终端</strong><small>可随时在智能运维页折叠</small></span><input type="checkbox" id="setting-terminal-expanded" checked></label>
+          <label>界面密度<select id="setting-density"><option value="comfortable">舒适</option><option value="compact">紧凑</option></select></label>
+        </div>
+        <div class="settings-group">
+          <h3>安全阶段显示</h3>
+          <p class="settings-note">只调整界面显示，不会关闭后端安全策略。</p>
+          <div id="stage-visibility-settings"></div>
+        </div>
+      </section>
+
+      <section class="settings-panel" data-settings-panel="security">
+        <div class="settings-group">
+          <h3>安全与账号状态</h3>
+          <dl class="settings-summary">
+            <div><dt>当前角色</dt><dd id="settings-role">未登录</dd></div>
+            <div><dt>密钥标识</dt><dd id="settings-key-id">无</dd></div>
+            <div><dt>当前安全态势</dt><dd id="settings-posture">读取中</dd></div>
+            <div><dt>审计链状态</dt><dd id="settings-chain">尚未验证</dd></div>
+            <div><dt>实时连接</dt><dd id="settings-ws">未连接</dd></div>
+          </dl>
+        </div>
+        <div class="settings-group">
+          <h3>界面行为</h3>
+          <label>系统上下文自动刷新<select id="setting-refresh-interval"><option value="0">关闭自动刷新</option><option value="15">每 15 秒</option><option value="30">每 30 秒</option><option value="60">每 60 秒</option></select></label>
+          <label>提示方式<select id="setting-notification"><option value="toast">页面提示</option><option value="inline">仅区域内提示</option></select></label>
+          <p class="settings-note">以上仅影响前端刷新与提示方式，不降低后端确认、约束、认证或审计策略。</p>
+        </div>
+        <div class="security-callout"><strong>生产部署提示</strong><p>请通过 HTTPS/WSS 访问，并在后端配置独立 API Key。密钥不会保存到本地存储、会话存储或 URL。</p></div>
+      </section>
+    </div>
+  </aside>
+
+  <aside class="drawer detail-drawer" id="audit-detail-drawer" aria-hidden="true" aria-labelledby="audit-detail-title">
+    <div class="drawer-head"><div><p class="eyebrow">审计记录详情</p><h2 id="audit-detail-title">事件信息</h2></div><button class="icon-button" type="button" data-close-drawer aria-label="关闭审计详情"><svg><use href="#i-close"/></svg></button></div>
+    <div class="drawer-content">
+      <div id="audit-detail-content" class="detail-content"></div>
+      <button class="button secondary full" type="button" id="btn-detail-verify">验证当日审计链</button>
+    </div>
+  </aside>
+
+  <div class="toast-region" id="toast-region" aria-live="polite" aria-atomic="true"></div>
+  <script src="/src/app.js"></script>
+</body>
+</html>
