@@ -130,26 +130,24 @@ Veto decay: 1h. Auto-regress: 24h no veto → balanced.
 ## Testing
 
 ```bash
-cd backend
-python -m pytest tests/ -v          # 141 tests, all structural
+cd backend && python -m pytest tests/ -q     # 83 tests
+cd .. && python -m pytest tests/ -q          # 6 tests
+# 89 tests total
 ```
 
 | Test file | Tests | Coverage |
 |-----------|------:|----------|
-| `test_guardrail.py` | 15 | T0-T3 individual layers |
-| `test_pipeline.py` | 11 | E2E pipeline + audit chain |
-| `test_risk_posture.py` | 8 | Posture state machine |
-| `test_jailbreak.py` | 4 | Known attack vectors |
-| `test_jailbreak_corpus.py` | 5 | 35-entry corpus regression |
-| `test_key_auth.py` | 17 | KeyStore CRUD + role thresholds |
-| `test_confirm_audit_api.py` | 9 | Confirm/deny flow + audits |
-| `test_api.py` | 11 | HTTP-level integration |
-| `test_pessimistic.py` | 19 | Edge cases, concurrency |
-| `test_session_store.py` | 10 | Session TTL, concurrent access |
-| `test_semantic_ambiguity.py` | 7 | Chinese ambiguity corpus (25 cases) |
-| `test_baseline.py` | 9 | Baseline learning + 3σ detection |
+| `backend/tests/test_pessimistic.py` | 24 | Edge cases, concurrency |
+| `backend/tests/test_capability_token.py` | 13 | Task-level CapBAC tokens |
+| `backend/tests/test_api.py` | 11 | HTTP-level integration |
+| `backend/tests/test_pipeline.py` | 11 | E2E pipeline + audit chain |
+| `backend/tests/test_indirect_injection.py` | 10 | Tool-output IPI detection |
+| `backend/tests/test_capbac_integration.py` | 8 | Role-based capability enforcement |
+| `backend/tests/test_ipi_integration.py` | 6 | IPI end-to-end |
+| `tests/test_security_hardening.py` | 6 | Hardening regressions |
 
-All tests are structural — no LLM calls needed. Run in <1s.
+All tests are structural: no LLM calls, no network, no API key. The full suite
+runs in about one second.
 
 ## Deploy
 

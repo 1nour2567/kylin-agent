@@ -4,6 +4,10 @@ __pycache__/
 *.egg-info/
 dist/
 build/
+.venv/
+venv/
+env/
+.pytest_cache/
 .env
 *.log
 data/
